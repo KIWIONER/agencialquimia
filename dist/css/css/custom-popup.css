@@ -1,0 +1,85 @@
+/* Custom Popup Styles */
+.custom-popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    display: none;
+    /* Hidden by default */
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.custom-popup-content {
+    background: rgba(10, 10, 10, 0.95);
+    border: 1px solid var(--accent-color);
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
+    padding: 2.5rem;
+    max-width: 450px;
+    width: 90%;
+    text-align: center;
+    border-radius: 8px;
+    position: relative;
+    transform: scale(0.9);
+    animation: popupScale 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.popup-title {
+    font-family: var(--font-heading);
+    color: var(--accent-color);
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
+.popup-message {
+    font-family: 'Space Grotesk', monospace;
+    font-size: 1rem;
+    color: #e0e0e0;
+    margin-bottom: 2rem;
+    line-height: 1.6;
+}
+
+.popup-btn {
+    background: var(--accent-color);
+    color: #000;
+    font-family: var(--font-heading);
+    font-weight: 700;
+    padding: 0.8rem 2rem;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+    text-transform: uppercase;
+}
+
+.popup-btn:hover {
+    background: #fff;
+    box-shadow: 0 0 25px rgba(255, 255, 255, 0.6);
+    transform: translateY(-2px);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes popupScale {
+    to {
+        transform: scale(1);
+    }
+}
