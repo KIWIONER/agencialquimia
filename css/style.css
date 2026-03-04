@@ -2,7 +2,7 @@
     /* PALETA: EJECUTIVO MODERNO (Rich Black & Enterprise Blue) */
 
     /* Fondos: Oscuros pero no negros puros (más elegante) */
-    --bg-color: #0b0c10;
+    --bg-color: #050505;
     --card-bg: #1f2833;
 
     /* Textos: Claridad máxima sin deslumbrar */
@@ -327,7 +327,7 @@ ul {
     position: absolute;
     bottom: 80px;
     right: 0;
-    width: 420px;
+    width: 480px;
     height: 600px;
     background: rgba(5, 8, 15, 0.98);
     /* Fondo casi negro para mayor contraste */
