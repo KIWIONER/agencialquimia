@@ -11,6 +11,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatInput = document.getElementById('user-input');
     const chatHistoryDiv = document.getElementById('chat-history');
 
+    // Manejo de Session ID para Supabase (Memoria)
+    // Se genera en cada recarga de página para facilitar pruebas sin historial previo
+    let currentSessionId = 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+
+    function getOrCreateSessionId() {
+        return currentSessionId;
+    }
+
     // Estado del chat (Memoria a corto plazo)
     let chatHistory = [];
 
@@ -62,19 +70,37 @@ document.addEventListener('DOMContentLoaded', () => {
         // 2. Indicador de "Escribiendo..."
         const loadingId = addMessageToUI('Analizando...', 'bot', true);
 
-        // Proxy via Netlify Function (mismo dominio = sin CORS ni Mixed Content)
-        const webhookUrl = "/.netlify/functions/chat-proxy";
+        // Nueva ruta directa y segura de producción hacia el Cerebro n8n
+        const webhookUrl = "https://cerebro.agencialquimia.com/webhook/v1/agente/consulta";
 
         try {
             const response = await fetch(webhookUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: text })
+                // JSON completo y exacto para el Cerebro n8n / Gemini / Supabase
+                body: JSON.stringify({
+                    tenant: "Agencialquimia",
+                    sessionId: getOrCreateSessionId(), // Identificador único para memoria
+                    cliente_nombre: "",
+                    cliente_telefono: "",
+                    chatInput: text
+                })
             });
 
-            const data = await response.json();
-            // Buscamos 'output' que es el nombre que configuramos en el nodo 'Edit Fields'
-            const botReply = data.output || data.text || "Conexión establecida, pero sin respuesta.";
+            // n8n parece estar enviando la respuesta directamente como texto (String)
+            // en lugar de un JSON estructurado. Leemos como texto puro:
+            const responseText = await response.text();
+
+            // Si por alguna razón envía JSON (ej: si cambias la conf. en n8n), 
+            // intentamos extraer el texto principal, sino, usamos el texto puro devuelto.
+            let botReply = responseText;
+            try {
+                const data = JSON.parse(responseText);
+                // El Agente de n8n suele devolver la respuesta en la clave "output", "text" o "response"
+                botReply = data.output || data.response || data.text || data.message || responseText;
+            } catch (e) {
+                // Era un texto plano, lo dejamos tal cual
+            }
 
             removeMessage(loadingId);
             addMessageToUI(botReply, 'bot');
@@ -88,10 +114,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Helpers UI
+    function parseMarkdown(text) {
+        // Parsear markdown básico de Gemini/LangChain a HTML seguro
+        let htmlText = text.replace(/</g, '&lt;').replace(/>/g, '&gt;'); // Escapar HTML
+        return htmlText
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Negrita
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')             // Cursiva
+            .replace(/\n/g, '<br>');                          // Saltos de línea
+    }
+
     function addMessageToUI(text, sender, isLoading = false) {
         const div = document.createElement('div');
         div.classList.add('message', sender === 'bot' ? 'bot-message' : 'user-message');
-        div.innerText = text;
+
+        if (sender === 'bot' && !isLoading) {
+            div.innerHTML = parseMarkdown(text);
+        } else {
+            div.innerText = text;
+        }
+
         if (isLoading) {
             div.id = 'loading-msg';
             div.style.opacity = '0.7';
@@ -115,13 +156,32 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Botones de Opciones Rápidas
+    const optionBtns = document.querySelectorAll('.chat-option-btn');
+    const optionsContainer = document.getElementById('chat-options-container');
+
+    if (optionBtns.length > 0) {
+        optionBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const text = btn.innerText;
+                chatInput.value = text;
+                sendMessage();
+                // Ocultar botones una vez se elige una opción
+                if (optionsContainer) optionsContainer.style.display = 'none';
+            });
+        });
+    }
+
     // Smooth Scrolling
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
             e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({ behavior: 'smooth' });
+            const href = this.getAttribute('href');
+            if (href && href !== '#') {
+                const target = document.querySelector(href);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
             }
             // Close mobile menu after clicking a link
             if (navLinks && navLinks.classList.contains('active')) {
@@ -168,66 +228,78 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = true;
             btn.style.cursor = "wait";
 
+            const nombre = document.getElementById('name').value;
+            const correo = document.getElementById('email').value;
+            const sector = document.getElementById('sector').value;
+            const telefono = document.getElementById('phone').value;
+            const mensaje = document.getElementById('process').value;
+
+            // Datos estructurados para n8n > Supabase
             const formData = {
-                source: 'Web Principal',
-                name: document.getElementById('name').value,
-                sector: document.getElementById('sector').value,
-                email: document.getElementById('email').value,
-                phone: document.getElementById('phone').value,
-                message: document.getElementById('process').value,
-                timestamp: new Date().toISOString()
+                tenant: "Agencialquimia",
+                cliente_nombre: nombre,
+                cliente_telefono: telefono,
+                motivo: mensaje, // Mapeamos el campo proceso/mensaje aquí
+                chatInput: `[NUEVO LEAD - Agencia Alquimia]\nNombre: ${nombre}\nCorreo: ${correo}\nSector: ${sector}\nTeléfono: ${telefono}\nMensaje/Necesidad: ${mensaje}\nFecha: ${new Date().toISOString()}`
             };
 
-            try {
-                // 1. Efecto visual inmediato (UX)
-                btn.innerText = "CONECTANDO CEREBRO...";
+            // Nueva función de integración hacia el cerebro n8n
+            async function enviarCerebroN8n(datosCliente) {
+                // Ruta directa y segura de producción (HTTPS) hacia el cerebro n8n
+                const webhookUrl = 'https://cerebro.agencialquimia.com/webhook/v1/agente/consulta';
 
-                // 2. Definimos el destino (VPS)
-                const webhookURL = "http://195.201.118.14:5678/webhook-test/audit";
+                try {
+                    // Efecto visual inmediato (UX)
+                    btn.innerText = "CONECTANDO CEREBRO...";
 
-                // 3. Enviamos los datos (Fetch)
-                const response = await fetch(webhookURL, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(formData)
-                });
+                    const respuesta = await fetch(webhookUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(datosCliente),
+                    });
 
-                // 4. Verificamos si n8n nos ha escuchado
-                if (response.ok) {
-                    btn.innerText = "¡RECIBIDO EN CENTRAL!";
-                    btn.style.background = "#22c55e";
-                    btn.style.color = "#000";
+                    if (respuesta.ok) {
+                        console.log('¡Conexión sináptica exitosa! El cerebro ha recibido los datos.');
 
-                    // Lanzar Popup
-                    if (popup) {
-                        popup.style.display = 'flex';
-                        const msg = document.querySelector('.popup-message');
-                        if (msg) msg.innerText = `Hola ${formData.name}, el sistema ha procesado tu solicitud. Iniciando protocolo de análisis.`;
+                        // Mensaje de éxito elegante en la interfaz original
+                        btn.innerText = "¡RECIBIDO EN CENTRAL!";
+                        btn.style.background = "#22c55e";
+                        btn.style.color = "#000";
+
+                        // Lanzar Popup
+                        if (popup) {
+                            popup.style.display = 'flex';
+                            const msg = document.querySelector('.popup-message');
+                            if (msg) msg.innerText = `Hola ${nombre}, el sistema ha procesado tu solicitud. Iniciando protocolo de análisis.`;
+                        }
+                        contactForm.reset();
+                    } else {
+                        console.error('El cerebro ha rechazado la conexión. Revisa la URL.');
+                        throw new Error(`Error HTTP: ${respuesta.status}`);
                     }
-                    contactForm.reset();
-                } else {
-                    throw new Error("Error en servidor");
+                } catch (error) {
+                    console.error('Fallo crítico en el sistema nervioso:', error);
+                    btn.innerText = "ERROR DE CONEXIÓN";
+                    btn.style.background = "#ef4444";
+
+                    // FALLBACK: Aviso técnico
+                    alert("Nota: El sistema neuronal no responde temporalmente. Intenta nuevamente más tarde.");
                 }
-
-            } catch (error) {
-                console.error("Error de conexión:", error);
-                btn.innerText = "ERROR DE CONEXIÓN";
-                btn.style.background = "#ef4444";
-
-                // FALLBACK: Aviso técnico
-                alert("Nota: Si no funciona, asegúrate de que n8n dice 'Waiting for data' en el botón rojo.");
-            } finally {
-                setTimeout(() => {
-                    btn.innerText = originalText;
-                    btn.disabled = false;
-                    btn.style.opacity = "1";
-                    btn.style.cursor = "pointer";
-                    btn.style.background = "";
-                    btn.style.color = "";
-                }, 4000);
             }
+
+            // Ejecutar la función
+            await enviarCerebroN8n(formData);
+
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.disabled = false;
+                btn.style.opacity = "1";
+                btn.style.cursor = "pointer";
+                btn.style.background = "";
+                btn.style.color = "";
+            }, 4000);
         });
     }
 
