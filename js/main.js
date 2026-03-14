@@ -30,7 +30,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     if (closeChatBtn) {
-        closeChatBtn.addEventListener('click', () => chatWindow.classList.add('hidden'));
+        closeChatBtn.addEventListener('click', () => {
+            chatWindow.classList.add('hidden');
+            // Reset height when closing
+            if (window.visualViewport) chatWindow.style.height = '';
+        });
+    }
+
+    // --- ADAPTACIÓN AL TECLADO MÓVIL (Visual Viewport) ---
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', () => {
+            if (chatWindow && !chatWindow.classList.contains('hidden')) {
+                const height = window.visualViewport.height;
+                const offset = window.visualViewport.offsetTop;
+                
+                // Ajustamos altura y posición
+                chatWindow.style.height = `${height}px`;
+                
+                // Scroll al final
+                chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+                
+                // Fix para iOS
+                window.scrollTo(0, 0);
+            }
+        });
     }
 
     // Hero button opens chat
