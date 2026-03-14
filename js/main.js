@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const sendBtn = document.getElementById('send-btn');
     const chatInput = document.getElementById('user-input');
     const chatHistoryDiv = document.getElementById('chat-history');
+    const uploadBtn = document.getElementById('upload-btn');
+    const imageInput = document.getElementById('image-input');
 
     // Manejo de Session ID para Supabase (Memoria)
     // Se genera en cada recarga de página para facilitar pruebas sin historial previo
@@ -146,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/\n/g, '<br>');                          // Saltos de línea
     }
 
-    function addMessageToUI(text, sender, isLoading = false) {
+    function addMessageToUI(text, sender, isLoading = false, imageData = null) {
         const div = document.createElement('div');
         div.classList.add('message', sender === 'bot' ? 'bot-message' : 'user-message');
 
@@ -154,6 +156,12 @@ document.addEventListener('DOMContentLoaded', () => {
             div.innerHTML = parseMarkdown(text);
         } else {
             div.innerText = text;
+        }
+
+        if (imageData) {
+            const img = document.createElement('img');
+            img.src = imageData;
+            div.appendChild(img);
         }
 
         if (isLoading) {
@@ -164,6 +172,29 @@ document.addEventListener('DOMContentLoaded', () => {
         chatHistoryDiv.appendChild(div);
         chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
         return div.id;
+    }
+
+    // --- MANEJO DE IMÁGENES ---
+    if (uploadBtn && imageInput) {
+        uploadBtn.addEventListener('click', () => imageInput.click());
+
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const base64Image = event.target.result;
+                addMessageToUI('He adjuntado esta imagen:', 'user', false, base64Image);
+                // Aquí podrías enviar la imagen al backend si fuera necesario
+                // Por ahora solo la mostramos en la UI como "adjunto"
+                chatHistory.push({ role: 'user', content: '[Imagen adjunta]', image: base64Image });
+                
+                // Limpiar input para permitir subir la misma imagen si se desea
+                imageInput.value = '';
+            };
+            reader.readAsDataURL(file);
+        });
     }
 
     function removeMessage(id) {
