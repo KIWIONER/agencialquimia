@@ -10,8 +10,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const sendBtn = document.getElementById('send-btn');
     const chatInput = document.getElementById('user-input');
     const chatHistoryDiv = document.getElementById('chat-history');
-    const uploadBtn = document.getElementById('upload-btn');
-    const imageInput = document.getElementById('image-input');
+    const welcomeScreen = document.getElementById('chat-welcome-screen');
+
+    function hideWelcomeScreen() {
+        if (welcomeScreen && !welcomeScreen.classList.contains('hidden')) {
+            welcomeScreen.classList.add('hidden');
+        }
+    }
 
     // Manejo de Session ID para Supabase (Memoria)
     // Se genera en cada recarga de página para facilitar pruebas sin historial previo
@@ -148,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/\n/g, '<br>');                          // Saltos de línea
     }
 
-    function addMessageToUI(text, sender, isLoading = false, imageData = null) {
+    function addMessageToUI(text, sender, isLoading = false) {
         const div = document.createElement('div');
         div.classList.add('message', sender === 'bot' ? 'bot-message' : 'user-message');
 
@@ -156,12 +161,6 @@ document.addEventListener('DOMContentLoaded', () => {
             div.innerHTML = parseMarkdown(text);
         } else {
             div.innerText = text;
-        }
-
-        if (imageData) {
-            const img = document.createElement('img');
-            img.src = imageData;
-            div.appendChild(img);
         }
 
         if (isLoading) {
@@ -174,39 +173,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return div.id;
     }
 
-    // --- MANEJO DE IMÁGENES ---
-    if (uploadBtn && imageInput) {
-        uploadBtn.addEventListener('click', () => imageInput.click());
-
-        imageInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const base64Image = event.target.result;
-                addMessageToUI('He adjuntado esta imagen:', 'user', false, base64Image);
-                // Aquí podrías enviar la imagen al backend si fuera necesario
-                // Por ahora solo la mostramos en la UI como "adjunto"
-                chatHistory.push({ role: 'user', content: '[Imagen adjunta]', image: base64Image });
-                
-                // Limpiar input para permitir subir la misma imagen si se desea
-                imageInput.value = '';
-            };
-            reader.readAsDataURL(file);
-        });
-    }
-
     function removeMessage(id) {
         const el = document.getElementById(id);
         if (el) el.remove();
     }
 
     // Chat Listeners
-    if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+    if (sendBtn) {
+        sendBtn.addEventListener('click', () => {
+            hideWelcomeScreen();
+            sendMessage();
+        });
+    }
     if (chatInput) {
         chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
+            if (e.key === 'Enter') {
+                hideWelcomeScreen();
+                sendMessage();
+            }
+        });
+        chatInput.addEventListener('input', () => {
+            if (chatInput.value.trim().length > 0) {
+                hideWelcomeScreen();
+            }
         });
     }
 
@@ -218,6 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
         optionBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 const text = btn.innerText;
+                hideWelcomeScreen();
                 chatInput.value = text;
                 sendMessage();
                 // Ocultar botones una vez se elige una opción
