@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="Automatización y Agentes de Inteligencia Artificial para Pymes y Autónomos.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <title>AgenciAlquimia | Automatización e Inteligencia Aplicada</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css?v=5">
+    <link rel="stylesheet" href="/css/custom-popup.css">
+    <link rel="stylesheet" href="/_astro/dashboard.BqvozU_G.css">
+</head>
+<body>
+
+<nav class="glass-nav">
+    <div class="logo">Agenci<span class="highlight">Alquimia</span></div>
+    <button class="hamburger" id="hamburger-btn" aria-label="Abrir menú" aria-expanded="false">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+    </button>
+    <div class="nav-links" id="nav-links">
+        <a href="#services">Servicios</a>
+        <a href="#engineering">Ingeniería</a>
+        <a href="#partners-program">Partners</a>
+        <a href="#" id="nav-chat-btn" class="cta-btn small">Chat IA</a>
+    </div>
+</nav>
+
+<header class="hero hero-visual-bg">
+    <div class="hero-bg-overlay"></div>
+    <div class="hero-content">
+        <h1 class="hero-title">
+            Tu presencia digital debería operar por ti, no <span class="gradient-text">solo existir</span>.
+        </h1>
+        
+        <p class="subtitle">
+            Implementamos ecosistemas autónomos que cualifican prospectos, gestionan agendas y procesan datos 24/7.
+            <br>Integramos un entorno visual ultrarrápido con un motor lógico independiente.
+        </p>
+        <div class="hero-actions">
+            <button id="start-agent-btn" class="primary-btn">Hablar con el Consultor AI</button>
+            <a href="#services" class="secondary-btn">Explorar Soluciones</a>
+        </div>
+
+        <div class="pain-points-grid">
+            <div class="pain-card" data-reveal="up" data-reveal-delay="1">
+                <div class="pain-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                </div>
+                <h3>Cuellos de botella operativos</h3>
+                <p>El crecimiento de tu negocio está limitado por la capacidad humana de respuesta. Automatizamos los flujos de comunicación repetitivos para liberar tus recursos críticos.</p>
+            </div>
+            <div class="pain-card" data-reveal="up" data-reveal-delay="2">
+                <div class="pain-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                </div>
+                <h3>Fugas de conversión</h3>
+                <p>Una solicitud no atendida fuera de horario es capital perdido. Nuestra arquitectura asegura un tiempo de respuesta de cero segundos y una cualificación inmediata en cualquier momento.</p>
+            </div>
+            <div class="pain-card" data-reveal="up" data-reveal-delay="3">
+                <div class="pain-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                </div>
+                <h3>Dependencia humana</h3>
+                <p>Delegamos la captura de datos y la atención inicial en un sistema estructurado, centralizando la memoria de tu negocio en una base de datos relacional sin requerir supervisión constante.</p>
+            </div>
+        </div>
+
+        <p class="hero-subtext">
+            Arquitectura robusta. Implementamos cada 'Cerebro Digital' con precisión de ingeniería para que empieces a delegar carga operativa de forma estable y escalable.
+        </p>
+        <p class="dogfooding-text"><small>Powered by Alquimia Architecture (v.1.1)</small></p>
+    </div>
+</header>
+
+<div id="ai-widget-container">
+    <button id="chat-trigger" class="chat-fab">
+        <div class="fab-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        </div>
+        <span class="fab-text">Consultor IA</span>
+    </button>
+    <div id="chat-window" class="chat-window hidden">
+        <div class="chat-header">
+            <div class="header-info">
+                <span class="status-dot"></span>
+                <h3>Alquimia Brain</h3>
+            </div>
+            <button id="close-chat" class="close-btn">×</button>
+        </div>
+        <div id="chat-history" class="chat-body">
+            <div class="message bot-message">
+                <p>Hola, soy el asistente de alquimia, ¿En qué proceso puedo ayudarte a mejorar tu negocio?</p>
+            </div>
+            <div class="chat-options" id="chat-options-container">
+                <button class="chat-option-btn" data-action="quiero-info">Quiero saber qué hacen</button>
+                <button class="chat-option-btn" data-action="necesito-ahorrar-tiempo">Necesito ahorrar tiempo</button>
+                <button class="chat-option-btn" data-action="agendar-auditoria">Agendar auditoría gratis</button>
+            </div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="user-input" placeholder="Escribe tu duda..." autocomplete="off">
+            <button id="send-btn" class="send-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<section class="section dark-bg">
+    <div class="container text-center">
+        <h2 class="section-title" data-reveal="up">De escaparates estáticos a <span class="highlight">infraestructuras operativas</span>.</h2>
+        <p class="section-desc large-text" data-reveal="fade" data-reveal-delay="1">
+            Desplegamos sistemas en dos capas: un cuerpo web de alta velocidad para la interacción del usuario, y un <span class="highlight">cerebro de inteligencia artificial</span> que procesa, clasifica y ejecuta acciones en segundo plano mientras tú escalas el negocio.
+        </p>
+    </div>
+</section>
+
+<section id="services" class="section hero-visual-bg">
+    <div class="hero-bg-overlay"></div>
+    <div class="container">
+        <h2 class="section-title" data-reveal="up">Ingeniería que genera <span class="highlight">resultados inmediatos</span></h2>
+        <p class="section-desc">Módulos funcionales de alto rendimiento listos para integrarse en tu operación.</p>
+        
+        <div class="services-grid">
+            <div class="service-card featured" data-reveal="up" data-reveal-delay="1">
+                <div class="service-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                    </svg>
+                </div>
+                <h3>Centralita WhatsApp IA</h3>
+                <p>Atención simultánea de cientos de clientes. Responde dudas, envía catálogos y cierra agendas de forma autónoma.</p>
+                <ul class="service-list">
+                    <li>Respuestas inmediatas (< 3 seg)</li>
+                    <li>Integración con tu Bóveda de Datos</li>
+                    <li><strong>Cero Alucinaciones:</strong> Rigor técnico total</li>
+                </ul>
+            </div>
+
+            <div class="service-card" data-reveal="up" data-reveal-delay="2">
+                <div class="service-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                </div>
+                <h3>Cerebro de Documentos</h3>
+                <p>Extracción inteligente de datos desde facturas, albaranes o pedidos directamente a tu Excel, CRM o ERP.</p>
+                <ul class="service-list">
+                    <li>Eliminación de errores de picado</li>
+                    <li>Clasificación automática inteligente</li>
+                    <li>Conciliación de datos sin intervención</li>
+                </ul>
+            </div>
+
+            <div class="service-card" data-reveal="up" data-reveal-delay="3">
+                <div class="service-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 5 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </div>
+                <h3>Automatización n8n (RPA)</h3>
+                <p>Conectamos tus herramientas para que trabajen solas. Desde leads hasta facturación, sin intervención humana.</p>
+                <ul class="service-list">
+                    <li>Flujos de trabajo personalizados</li>
+                    <li>Integración con software legado</li>
+                    <li>Operatividad garantizada 24/7</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="showcase" class="section dark-bg">
+    <div class="container">
+        <h2 class="section-title" data-reveal="up">Showcase de Ingeniería: <span class="highlight">IA en Entornos Controlados</span></h2>
+        <p class="section-desc">Explora demostraciones funcionales diseñadas para resolver desafíos operativos específicos.</p>
+        
+        <div class="showcase-grid">
+            <div class="showcase-item premium-card" data-reveal="left" data-reveal-delay="1">
+                <div class="browser-mockup">
+                    <div class="mockup-header">
+                        <div class="dot red"></div>
+                        <div class="dot yellow"></div>
+                        <div class="dot green"></div>
+                    </div>
+                    <div class="mockup-content nexus-preview" role="img" aria-label="Agente IA para Frutería y Comercio Local - Gestión de pedidos">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.8"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                        <span style="margin-top:10px">Frutería Nexus</span>
+                    </div>
+                </div>
+                <div class="showcase-info">
+                    <h3>Frutería Nexus</h3>
+                    <p>E-commerce con gestión autónoma de pedidos.</p>
+                    <div class="metrics">
+                        <div class="metric-badge">Eficiencia Operativa: +40%</div>
+                        <div class="metric-badge">Gestión de Inventario Inteligente</div>
+                    </div>
+                    <a href="https://fruterianexus.netlify.app/" target="_blank" rel="noopener noreferrer" class="demo-link">Probar Capacidad Técnica <span class="arrow">→</span></a>
+                </div>
+            </div>
+
+            <div class="showcase-item premium-card" data-reveal="up" data-reveal-delay="2">
+                <div class="browser-mockup">
+                    <div class="mockup-header">
+                        <div class="dot red"></div>
+                        <div class="dot yellow"></div>
+                        <div class="dot green"></div>
+                    </div>
+                    <div class="mockup-content galiciana-preview" role="img" aria-label="IA para Mercado Gastronómico - Gestión de reservas y pedidos">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.8"><path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"></path><path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"></path><path d="M13 13h4"></path><path d="M13 17h4"></path><path d="M7 13h2v4H7z"></path></svg>
+                        <span style="margin-top:10px">La Galiciana</span>
+                    </div>
+                </div>
+                <div class="showcase-info">
+                    <h3>Mercado La Galiciana</h3>
+                    <p>Espacio gastronómico con IA para reservas y experiencias.</p>
+                    <div class="metrics">
+                        <div class="metric-badge">Gestión de Flujos: 24/7</div>
+                        <div class="metric-badge">Reservas VIP Automatizadas</div>
+                    </div>
+                    <a href="https://mercadolagaliciana.agencialquimia.com" target="_blank" rel="noopener noreferrer" class="demo-link">Probar Capacidad Técnica <span class="arrow">→</span></a>
+                </div>
+            </div>
+
+            <div class="showcase-item premium-card" data-reveal="right" data-reveal-delay="3">
+                <div class="browser-mockup">
+                    <div class="mockup-header">
+                        <div class="dot red"></div>
+                        <div class="dot yellow"></div>
+                        <div class="dot green"></div>
+                    </div>
+                    <div class="mockup-content melros-preview" role="img" aria-label="Sistema de IA para Clínica de Fisioterapia - Automatización de citas">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.8"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+                        <span style="margin-top:10px">Fisioterapia Melros</span>
+                    </div>
+                </div>
+                <div class="showcase-info">
+                    <h3>Fisioterapia Melros</h3>
+                    <p>Clínica con sistema de reservas automatizado.</p>
+                    <div class="metrics">
+                        <div class="metric-badge">Disponibilidad: <span class="txt-highlight">24/7</span></div>
+                        <div class="metric-badge">Triaje Médico Automatizado</div>
+                    </div>
+                    <a href="https://fisioterapiamelros.netlify.app/" target="_blank" rel="noopener noreferrer" class="demo-link">Probar Capacidad Técnica <span class="arrow">→</span></a>
+                </div>
+            </div>
+
+            <div class="showcase-item premium-card" data-reveal="up" data-reveal-delay="4">
+                <div class="browser-mockup">
+                    <div class="mockup-header">
+                        <div class="dot red"></div>
+                        <div class="dot yellow"></div>
+                        <div class="dot green"></div>
+                    </div>
+                    <div class="mockup-content inmobiliaria-preview" role="img" aria-label="IA para Inmobiliaria - Captación y clasificación de leads">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.8"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        <span style="margin-top:10px">Besthouse</span>
+                    </div>
+                </div>
+                <div class="showcase-info">
+                    <h3>Inmobiliaria Besthouse</h3>
+                    <p>Captación inteligente y clasificación de leads 24/7.</p>
+                    <div class="metrics">
+                        <div class="metric-badge">Captación Leads: +50%</div>
+                        <div class="metric-badge">Calificación Automática</div>
+                    </div>
+                    <a href="https://inmobiliaria.agencialquimia.com/" target="_blank" rel="noopener noreferrer" class="demo-link">Ver Demo en Vivo <span class="arrow">→</span></a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="benefits" class="section dark-bg">
+    <div class="container">
+        <h2 class="section-title" data-reveal="up">Deja de ser el motor de tu negocio y empieza a ser el <span class="highlight">piloto</span>.</h2>
+        
+        <div class="features-grid">
+            <div class="feature-card" data-reveal="up" data-reveal-delay="1">
+                <div class="icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                </div>
+                <h3>Escalabilidad sin Fricción</h3>
+                <p>El factor humano es el cuello de botella de cualquier pyme. Tu Agente IA elimina ese techo operativo, atendiendo a decenas de clientes en paralelo con la misma precisión técnica. Escalas tu atención y ventas sin disparar tus costes fijos ni la complejidad de gestión de personal.</p>
+            </div>
+            
+            <div class="feature-card" data-reveal="up" data-reveal-delay="2">
+                <div class="icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="12" x2="2" y2="12"></line>
+                        <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+                        <line x1="6" y1="16" x2="6.01" y2="16"></line>
+                        <line x1="10" y1="16" x2="10.01" y2="16"></line>
+                    </svg>
+                </div>
+                <h3>Activos Digitales con Memoria</h3>
+                <p>La mayoría de empresas mueren si el dueño se ausenta porque el conocimiento está en su cabeza. Con AgenciAlquimia, cada interacción construye tu propia Bóveda de Datos. Creas un sistema que acumula el "saber hacer" de tu empresa, aumentando su valor de mercado al dejar de depender exclusivamente de ti.</p>
+            </div>
+
+            <div class="feature-card" data-reveal="up" data-reveal-delay="3">
+                <div class="icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6-8 10 8 10z"></path>
+                    </svg>
+                </div>
+                <h3>Estándar de Excelencia Tecnológica</h3>
+                <p>No instalamos herramientas genéricas; desplegamos arquitectura de nivel corporativo adaptada a la agilidad de una pyme. Ofrecer una gestión impecable un domingo a medianoche te posiciona instantáneamente sobre tu competencia. No compites por precio, compites por ser la opción más eficiente y profesional.</p>
+            </div>
+        </div>
+
+        <div class="punchline-container" data-reveal="fade">
+            <p class="punchline-text">
+                <em>"Un negocio que requiere tu presencia constante para sobrevivir no es una empresa, es un <strong>autoempleo de alto riesgo</strong>. La arquitectura Alquimia es el puente hacia tu libertad operativa."</em>
+            </p>
+        </div>
+    </div>
+</section>
+
+<section id="roi-section" class="section dark-bg">
+    <div class="container text-center">
+        <h2 class="section-title" data-reveal="up">Eficiencia pura: Tu Agente no pide <span class="highlight">vacaciones</span>.</h2>
+        <div class="features-grid">
+            <div class="feature-card" data-reveal="up" data-reveal-delay="1">
+                <div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+                <h3>Disponibilidad <span class="txt-highlight">Total</span></h3>
+                <p>Atención al cliente y resolución de procesos críticos 24/7, sin fatiga ni errores.</p>
+            </div>
+            <div class="feature-card" data-reveal="up" data-reveal-delay="2">
+                <div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg></div>
+                <h3>Conversión de Tráfico</h3>
+                <p>Captura inmediata de leads: transformamos cada consulta en una oportunidad cerrada.</p>
+            </div>
+            <div class="feature-card" data-reveal="up" data-reveal-delay="3">
+                <div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
+                <h3>Precisión Algorítmica</h3>
+                <p>Ejecución perfecta de protocolos de reserva, triaje y clasificación sin sesgo humano.</p>
+            </div>
+        </div>
+        <p class="section-desc large-text roi-quote" data-reveal="fade">
+            "Si el sistema libera <span class="txt-highlight">2 horas de tu tiempo</span> al día o rescata un solo cliente perdido, la inversión se amortiza sola en tiempo récord."
+        </p>
+    </div>
+</section>
+
+<section id="faq" class="section">
+    <div class="container">
+        <h2 class="section-title" data-reveal="up">Resolución de Dudas de Negocio</h2>
+        <div class="faq-container">
+            <details class="faq-item" data-reveal="up" data-reveal-delay="1">
+                <summary class="faq-question">¿Cómo se amortiza esta inversión?</summary>
+                <div class="faq-answer">
+                    <p>Matemática simple. Si tu agente recupera solo <strong>1 cliente</strong> que habrías perdido por no responder a tiempo, o te ahorra <strong>20 horas</strong> de atención al mes, el sistema se paga solo en las primeras semanas. Estás comprando tiempo y captación.</p>
+                </div>
+            </details>
+            <details class="faq-item" data-reveal="up" data-reveal-delay="2">
+                <summary class="faq-question">¿Qué control tengo sobre lo que dice la IA?</summary>
+                <div class="faq-answer">
+                    <p>Control total (100%). Definimos "Guardrails" (barreras de seguridad) estrictas. El agente tiene prohibido hablar de política, competencia o temas fuera de guion. Si no sabe algo, está programado para escalar al humano, nunca inventar.</p>
+                </div>
+            </details>
+            <details class="faq-item" data-reveal="up" data-reveal-delay="3">
+                <summary class="faq-question">¿Es compatible con mi web actual?</summary>
+                <div class="faq-answer">
+                    <p>Absolutamente. Podemos desplegar el sistema como una capa superior (overlay) o rediseñar tu presencia desde cero. No necesitas borrar lo que ya tienes para empezar a automatizar.</p>
+                </div>
+            </details>
+        </div>
+    </div>
+</section>
+
+<section id="social-proof" class="section">
+    <div class="container">
+        <h2 class="section-title" data-reveal="up">Resultados que <span class="highlight">hablan solos</span></h2>
+        
+        <div class="metrics-strip" data-reveal="up">
+            <div class="metric-item">
+                <span class="metric-number" data-count="1.2">&lt;1.2</span>
+                <span class="metric-unit">seg</span>
+                <span class="metric-label">Tiempo de respuesta</span>
+            </div>
+            <div class="metric-divider"></div>
+            <div class="metric-item">
+                <span class="metric-number" data-count="99.8">99.8</span>
+                <span class="metric-unit">%</span>
+                <span class="metric-label">Uptime garantizado</span>
+            </div>
+            <div class="metric-divider"></div>
+            <div class="metric-item">
+                <span class="metric-number" data-count="100">100</span>
+                <span class="metric-unit">%</span>
+                <span class="metric-label">Clientes satisfechos</span>
+            </div>
+            <div class="metric-divider"></div>
+            <div class="metric-item">
+                <span class="metric-number" data-count="40">+40</span>
+                <span class="metric-unit">h/mes</span>
+                <span class="metric-label">Ahorro medio por cliente</span>
+            </div>
+        </div>
+
+        <div class="testimonials-grid">
+            <div class="testimonial-card" data-reveal="left" data-reveal-delay="1">
+                <div class="testimonial-quote">
+                    <svg class="quote-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"></path>
+                    </svg>
+                    <p>"Desde que instalaron el agente IA, mi clínica gestiona las citas sola. Antes perdía 3-4 pacientes al día por no poder coger el teléfono durante las sesiones."</p>
+                </div>
+                <div class="testimonial-author">
+                    <div class="author-avatar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+                    </div>
+                    <div class="author-info">
+                        <strong>María R.</strong>
+                        <span>Fisioterapeuta · Melros</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="testimonial-card" data-reveal="up" data-reveal-delay="2">
+                <div class="testimonial-quote">
+                    <svg class="quote-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"></path>
+                    </svg>
+                    <p>"La gestión de reservas en el Mercado ha dado un salto de calidad. La IA no solo reserva, sino que asesora a los clientes sobre nuestras experiencias."</p>
+                </div>
+                <div class="testimonial-author">
+                    <div class="author-avatar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z"></path><path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"></path></svg>
+                    </div>
+                    <div class="author-info">
+                        <strong>Gerencia</strong>
+                        <span>Mercado La Galiciana</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="testimonial-card" data-reveal="right" data-reveal-delay="3">
+                <div class="testimonial-quote">
+                    <svg class="quote-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z"></path>
+                    </svg>
+                    <p>"El sistema toma pedidos por WhatsApp mientras yo estoy en el mercado. Mis clientes piden fruta a las 11 de la noche y el agente les confirma al instante."</p>
+                </div>
+                <div class="testimonial-author">
+                    <div class="author-avatar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path></svg>
+                    </div>
+                    <div class="author-info">
+                        <strong>Carlos P.</strong>
+                        <span>Propietario · Frutería Nexus</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="contact" class="section">
+    <div class="container">
+        <h2 class="section-title" data-reveal="up">Solicitud de <span class="highlight">Diagnóstico Gratuito</span></h2>
+        <p class="section-desc">Descubre qué tareas puedes delegar hoy mismo.</p>
+        <form class="audit-form" id="audit-form" data-reveal="scale">
+            <div class="form-group">
+                <label for="name">Nombre y Cargo</label>
+                <input type="text" id="name" placeholder="Tu Nombre" required>
+            </div>
+            <div class="form-group">
+                <label for="sector">Sector</label>
+                <input type="text" id="sector" placeholder="Ej: Clínica, Inmobiliaria..." required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email Corporativo <span style="color:var(--accent-color)">*</span></label>
+                <input type="email" id="email" placeholder="nombre@empresa.com" required>
+            </div>
+            <div class="form-group">
+                <label for="phone">WhatsApp / Teléfono (Prioridad Alta)</label>
+                <input type="tel" id="phone" placeholder="+34 600 000 000">
+            </div>
+            <div class="form-group full-width">
+                <label for="process">¿Qué tarea delegarías en tu Agente IA?</label>
+                <textarea id="process" rows="4" placeholder="Ej: Responder preguntas frecuentes, agendar citas, filtrar leads..." required></textarea>
+            </div>
+            <p class="form-disclaimer">
+                Auditoría técnica sin coste ni compromiso. Respuesta humana en &lt; 24h.
+            </p>
+            <button type="submit" class="primary-btn">SOLICITAR MI DIAGNÓSTICO DE IA</button>
+        </form>
+    </div>
+</section>
+
+<!-- Tech Stack Section -->
+<section class="section tech-stack">
+    <div class="container">
+        <h2 class="section-title" data-reveal="up">Tecnología de <span class="highlight">Grado Empresarial</span></h2>
+        <p class="section-desc">Operamos sobre una infraestructura soberana y escalable, eliminando la dependencia de plataformas limitantes.</p>
+        
+        <div class="logo-grid" data-reveal="up">
+            <div class="logo-item"><img src="https://cdn.simpleicons.org/coolify/A259FF" alt="Coolify"></div>
+            <div class="logo-item"><img src="https://cdn.simpleicons.org/n8n/FF6C37" alt="n8n"></div>
+            <div class="logo-item"><img src="https://cdn.simpleicons.org/supabase/3ECF8E" alt="Supabase"></div>
+            <div class="logo-item"><img src="https://cdn.simpleicons.org/hetzner/D50D0D" alt="Hetzner"></div>
+            <div class="logo-item"><img src="https://cdn.simpleicons.org/cloudflare/F38020" alt="Cloudflare"></div>
+            <div class="logo-item"><img src="https://cdn.simpleicons.org/googlecloud/4285F4" alt="Antigravity"></div>
+        </div>
+    </div>
+</section>
+
+<footer class="main-footer">
+    <h3 class="footer-title">AgenciAlquimia</h3>
+    <p class="footer-tagline">Ayudando a negocios locales a competir en las Grandes Ligas con tecnología invisible.</p>
+    <div class="footer-divider">
+        <p class="footer-copyright">&copy; 2026 AgenciAlquimia. Todos los derechos reservados.</p>
+    </div>
+</footer>
+
+<script src="/js/main.js?v=4" defer></script>
+</body>
+</html>
