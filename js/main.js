@@ -18,6 +18,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    if (welcomeScreen) {
+        welcomeScreen.addEventListener('click', hideWelcomeScreen);
+    }
+
     // Manejo de Session ID para Supabase (Memoria)
     // Se genera en cada recarga de página para facilitar pruebas sin historial previo
     let currentSessionId = 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
