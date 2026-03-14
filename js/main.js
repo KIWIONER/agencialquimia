@@ -10,18 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const sendBtn = document.getElementById('send-btn');
     const chatInput = document.getElementById('user-input');
     const chatHistoryDiv = document.getElementById('chat-history');
-    const welcomeScreen = document.getElementById('chat-welcome-screen');
-
-    function hideWelcomeScreen() {
-        if (welcomeScreen && !welcomeScreen.classList.contains('hidden')) {
-            welcomeScreen.classList.add('hidden');
-        }
-    }
-
-    if (welcomeScreen) {
-        welcomeScreen.addEventListener('click', hideWelcomeScreen);
-    }
-
     // Manejo de Session ID para Supabase (Memoria)
     // Se genera en cada recarga de página para facilitar pruebas sin historial previo
     let currentSessionId = 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
@@ -183,43 +171,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Chat Listeners
-    if (sendBtn) {
-        sendBtn.addEventListener('click', () => {
-            hideWelcomeScreen();
-            sendMessage();
-        });
-    }
+    if (sendBtn) sendBtn.addEventListener('click', sendMessage);
     if (chatInput) {
         chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                hideWelcomeScreen();
-                sendMessage();
-            }
-        });
-        chatInput.addEventListener('input', () => {
-            if (chatInput.value.trim().length > 0) {
-                hideWelcomeScreen();
-            }
+            if (e.key === 'Enter') sendMessage();
         });
     }
-
-    // Botones de Opciones Rápidas
-    const optionBtns = document.querySelectorAll('.chat-option-btn');
-    const optionsContainer = document.getElementById('chat-options-container');
-
-    if (optionBtns.length > 0) {
-        optionBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const text = btn.innerText;
-                hideWelcomeScreen();
-                chatInput.value = text;
-                sendMessage();
-                // Ocultar botones una vez se elige una opción
-                if (optionsContainer) optionsContainer.style.display = 'none';
-            });
-        });
-    }
-
     // Smooth Scrolling
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
