@@ -378,10 +378,10 @@ ul {
 
 .pain-icon {
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     color: var(--accent-color);
-    width: 80px;
-    height: 80px;
+    width: 50px;
+    height: 50px;
     margin-left: auto;
     margin-right: auto;
     display: flex;
@@ -392,7 +392,7 @@ ul {
 .pain-icon svg {
     width: 100%;
     height: 100%;
-    stroke-width: 2;
+    stroke-width: 1.8;
 }
 
 .pain-card:hover .pain-icon {
@@ -823,15 +823,15 @@ ul {
 
 .feature-card .icon {
     font-size: 2.5rem;
-    margin-bottom: 2rem;
-    height: 80px;
-    width: 80px;
+    margin-bottom: 1.5rem;
+    height: 50px;
+    width: 50px;
     margin-left: auto;
     margin-right: auto;
     display: flex;
     justify-content: center;
     align-items: center;
-    filter: drop-shadow(0 0 12px var(--accent-color));
+    filter: drop-shadow(0 0 10px var(--accent-color));
     color: var(--accent-color);
 }
 
@@ -839,7 +839,7 @@ ul {
     width: 100%;
     height: 100%;
     stroke: var(--accent-color);
-    stroke-width: 2;
+    stroke-width: 1.8;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -1767,11 +1767,11 @@ ul {
 
 .service-icon {
     font-size: 2.5rem;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     color: var(--accent-color);
     transition: all 0.3s ease;
-    width: 80px;
-    height: 80px;
+    width: 50px;
+    height: 50px;
     margin-left: auto;
     margin-right: auto;
     display: flex;
@@ -1782,7 +1782,7 @@ ul {
 .service-icon svg {
     width: 100%;
     height: 100%;
-    stroke-width: 2;
+    stroke-width: 1.8;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -2026,9 +2026,9 @@ ul {
 }
 
 .mockup-content svg {
-    width: 80px !important;
-    height: 80px !important;
-    stroke-width: 2;
+    width: 50px !important;
+    height: 50px !important;
+    stroke-width: 1.8;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
