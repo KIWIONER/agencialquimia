@@ -366,6 +366,26 @@ ul {
     background: rgba(31, 40, 51, 0.4);
     backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.pain-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    border-color: var(--accent-color);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    background: rgba(45, 55, 70, 0.5);
+}
+
+.pain-icon {
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    margin-bottom: 1rem;
+    color: var(--accent-color);
+}
+
+.pain-card:hover .pain-icon {
+    transform: scale(1.2);
+    filter: drop-shadow(0 0 10px var(--accent-color));
+    color: #fff;
 }
 
 /* --- TECH STACK SECTION --- */
@@ -422,8 +442,17 @@ ul {
 }
 
 .chat-fab:hover {
-    transform: scale(1.05);
-    box-shadow: 0 6px 25px rgba(102, 252, 241, 0.6);
+    transform: translateY(-5px) scale(1.05); /* Se eleva un poco más */
+    box-shadow: 0 10px 30px rgba(102, 252, 241, 0.6);
+}
+
+.chat-fab .fab-icon svg {
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.chat-fab:hover .fab-icon svg {
+    transform: scale(1.2) rotate(5deg);
+    filter: drop-shadow(0 0 10px #000);
 }
 
 .fab-icon {
@@ -773,8 +802,10 @@ ul {
 }
 
 .feature-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-10px) scale(1.02);
     border-color: var(--accent-color);
+    box-shadow: 0 15px 40px rgba(102, 252, 241, 0.15);
+    background: rgba(45, 55, 70, 0.5) !important; /* Ligeramente más claro al hover */
 }
 
 .feature-card .icon {
@@ -1694,9 +1725,10 @@ ul {
 }
 
 .service-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-10px) scale(1.02);
     border-color: var(--accent-color);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(102, 252, 241, 0.1);
+    background: rgba(45, 55, 70, 0.5) !important;
 }
 
 /* Servicio estrella (WhatsApp) */
@@ -1729,7 +1761,12 @@ ul {
 
 .service-card:hover .service-icon {
     color: var(--text-bright);
-    transform: scale(1.1);
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 12px var(--accent-color));
+}
+
+.service-icon svg {
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .service-card h3 {
@@ -1955,7 +1992,25 @@ ul {
         padding: 2rem;
     }
 
-    /* Showcase */
+    .showcase-item {
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.showcase-item:hover {
+    transform: translateY(-10px) scale(1.02);
+    border-color: var(--accent-color) !important;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(102, 252, 241, 0.1);
+}
+
+.mockup-content svg {
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.showcase-item:hover .mockup-content svg {
+    transform: scale(1.25);
+    filter: drop-shadow(0 0 15px var(--accent-color));
+    stroke: #fff;
+}
     .showcase-grid {
         grid-template-columns: 1fr;
     }
