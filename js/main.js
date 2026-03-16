@@ -40,17 +40,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', () => {
             if (chatWindow && !chatWindow.classList.contains('hidden')) {
-                const height = window.visualViewport.height;
-                const offset = window.visualViewport.offsetTop;
-                
-                // Ajustamos altura y posición
-                chatWindow.style.height = `${height}px`;
-                
-                // Scroll al final
-                chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
-                
-                // Fix para iOS
-                window.scrollTo(0, 0);
+                // Solo aplicamos el ajuste de altura en móvil (<= 768px)
+                if (window.innerWidth <= 768) {
+                    const height = window.visualViewport.height;
+                    chatWindow.style.height = `${height}px`;
+                    
+                    // Scroll al final
+                    chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+                    
+                    // Fix para iOS
+                    window.scrollTo(0, 0);
+                } else {
+                    // En escritorio, dejamos que el CSS controle la altura (600px)
+                    chatWindow.style.height = '';
+                }
             }
         });
     }
@@ -192,16 +195,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (navLinks && navLinks.classList.contains('active')) {
                 navLinks.classList.remove('active');
                 hamburgerBtn.classList.remove('active');
+                if (glassNav) glassNav.classList.remove('active');
                 hamburgerBtn.setAttribute('aria-expanded', 'false');
             }
         });
     });
 
     // --- Hamburger Menu ---
+    const glassNav = document.querySelector('.glass-nav');
     if (hamburgerBtn && navLinks) {
         hamburgerBtn.addEventListener('click', () => {
             const isOpen = navLinks.classList.toggle('active');
             hamburgerBtn.classList.toggle('active');
+            if (glassNav) glassNav.classList.toggle('active');
             hamburgerBtn.setAttribute('aria-expanded', isOpen);
         });
 
@@ -212,6 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 !hamburgerBtn.contains(e.target)) {
                 navLinks.classList.remove('active');
                 hamburgerBtn.classList.remove('active');
+                if (glassNav) glassNav.classList.remove('active');
                 hamburgerBtn.setAttribute('aria-expanded', 'false');
             }
         });

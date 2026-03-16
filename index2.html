@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="description" content="Automatización y Agentes de Inteligencia Artificial para Pymes y Autónomos.">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <title>AgenciAlquimia | Automatización e Inteligencia Aplicada</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="icon" type="image/png" href="/assets/images/favicon.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css?v=16">
@@ -17,22 +17,29 @@
 <body>
 
 <nav class="glass-nav">
-    <div class="logo">Agenci<span class="highlight">Alquimia</span></div>
+    <div class="logo">
+        <img src="/assets/images/logo.png" alt="AgenciAlquimia Logo" class="nav-logo">
+        <span>Agenci<span class="highlight">Alquimia</span></span>
+    </div>
     <button class="hamburger" id="hamburger-btn" aria-label="Abrir menú" aria-expanded="false">
         <span class="bar"></span>
         <span class="bar"></span>
         <span class="bar"></span>
     </button>
     <div class="nav-links" id="nav-links">
+        <a href="#desafios">Desafíos</a>
         <a href="#services">Servicios</a>
-        <a href="#engineering">Ingeniería</a>
+        <a href="#showcase">Demos</a>
         <a href="#partners-program">Partners</a>
         <a href="#" id="nav-chat-btn" class="cta-btn small">Chat IA</a>
     </div>
 </nav>
 
 <header class="hero hero-visual-bg">
-    <div class="hero-bg-overlay"></div>
+    <video autoplay muted loop playsinline class="hero-video">
+        <source src="assets/videos/Cerebro_de_medusa_flotando_en_estrellas.mp4" type="video/mp4">
+    </video>
+    <div class="hero-overlay"></div>
     <div class="hero-content">
         <h1 class="hero-title">
             Tu presencia digital debería operar por ti, no <span class="gradient-text">solo existir</span>.
@@ -46,7 +53,12 @@
             <button id="start-agent-btn" class="primary-btn">Hablar con el Consultor IA</button>
             <a href="#services" class="secondary-btn">Explorar Soluciones</a>
         </div>
+    </div>
+</header>
 
+<section id="desafios" class="section tight-top">
+    <div class="container">
+        <h2 class="section-title text-center" data-reveal="up" style="margin-bottom: 3rem;">Desafíos de la <span class="highlight">Operativa Digital</span></h2>
         <div class="pain-points-grid">
             <div class="pain-card" data-reveal="up" data-reveal-delay="1">
                 <div class="pain-icon">
@@ -57,7 +69,7 @@
             </div>
             <div class="pain-card" data-reveal="up" data-reveal-delay="2">
                 <div class="pain-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
                 </div>
                 <h3>Fugas de conversión</h3>
                 <p>Una solicitud no atendida fuera de horario es capital perdido. Nuestra arquitectura asegura un tiempo de respuesta de cero segundos y una cualificación inmediata en cualquier momento.</p>
@@ -71,12 +83,21 @@
             </div>
         </div>
 
-        <p class="hero-subtext">
+        <p class="hero-subtext" style="text-align: center; margin-top: 3rem;">
             Arquitectura robusta. Implementamos cada 'Cerebro Digital' con precisión de ingeniería para que empieces a delegar carga operativa de forma estable y escalable.
         </p>
-        <p class="dogfooding-text"><small>Powered by Alquimia Architecture (v.1.1)</small></p>
+        <p class="dogfooding-text" style="text-align: center;"><small>Powered by Alquimia Architecture (v.1.1)</small></p>
     </div>
-</header>
+</section>
+
+<section class="section dark-bg">
+    <div class="container text-center">
+        <h2 class="section-title" data-reveal="up">De escaparates estáticos a <span class="highlight">infraestructuras operativas</span>.</h2>
+        <p class="section-desc large-text" data-reveal="fade" data-reveal-delay="1">
+            Desplegamos sistemas en dos capas: un cuerpo web de alta velocidad para la interacción del usuario, y un <span class="highlight">cerebro de inteligencia artificial</span> que procesa, clasifica y ejecuta acciones en segundo plano mientras tú escalas el negocio.
+        </p>
+    </div>
+</section>
 
 <div id="ai-widget-container">
     <button id="chat-trigger" class="chat-fab">
@@ -101,20 +122,11 @@
         <div class="chat-input-area">
             <input type="text" id="user-input" placeholder="Escribe tu duda..." autocomplete="off">
             <button id="send-btn" class="send-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
             </button>
         </div>
     </div>
 </div>
-
-<section class="section dark-bg">
-    <div class="container text-center">
-        <h2 class="section-title" data-reveal="up">De escaparates estáticos a <span class="highlight">infraestructuras operativas</span>.</h2>
-        <p class="section-desc large-text" data-reveal="fade" data-reveal-delay="1">
-            Desplegamos sistemas en dos capas: un cuerpo web de alta velocidad para la interacción del usuario, y un <span class="highlight">cerebro de inteligencia artificial</span> que procesa, clasifica y ejecuta acciones en segundo plano mientras tú escalas el negocio.
-        </p>
-    </div>
-</section>
 
 <section id="services" class="section hero-visual-bg">
     <div class="hero-bg-overlay"></div>
@@ -130,11 +142,11 @@
                     </svg>
                 </div>
                 <h3>Centralita WhatsApp IA</h3>
-                <p>Atención simultánea de cientos de clientes. Responde dudas, envía catálogos y cierra agendas de forma autónoma.</p>
+                <p>Interacción nativa desde tu número corporativo. Resuelve consultas técnicas, gestiona interesados y coordina citas con lenguaje natural.</p>
                 <ul class="service-list">
-                    <li>Respuestas inmediatas (< 3 seg)</li>
-                    <li>Integración con tu Bóveda de Datos</li>
-                    <li><strong>Cero Alucinaciones:</strong> Rigor técnico total</li>
+                    <li>Conversación Experta y Fluida</li>
+                    <li>Soberanía y Seguridad de Datos</li>
+                    <li>Conexión Real con tu Negocio</li>
                 </ul>
             </div>
 
@@ -148,12 +160,12 @@
                         <polyline points="10 9 9 9 8 9"></polyline>
                     </svg>
                 </div>
-                <h3>Cerebro de Documentos</h3>
-                <p>Extracción inteligente de datos desde facturas, albaranes o pedidos directamente a tu Excel, CRM o ERP.</p>
+                <h3>Gestión de Documentos</h3>
+                <p>Procesamiento inteligente de registros oficiales. Extracción automatizada de datos en Notas Simples y Albaranes para transformar información compleja en activos operativos.</p>
                 <ul class="service-list">
-                    <li>Eliminación de errores de picado</li>
-                    <li>Clasificación automática inteligente</li>
-                    <li>Conciliación de datos sin intervención</li>
+                    <li>Eliminación de errores de carga</li>
+                    <li>Lectura inteligente de PDF/Imagen</li>
+                    <li>Sincronización con tu base de datos</li>
                 </ul>
             </div>
 
@@ -164,12 +176,12 @@
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 5 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                     </svg>
                 </div>
-                <h3>Automatización n8n (RPA)</h3>
-                <p>Conectamos tus herramientas para que trabajen solas. Desde leads hasta facturación, sin intervención humana.</p>
+                <h3>Autonomía de Activos</h3>
+                <p>Sincronización integral de ecosistemas digitales. Conectamos flujos de comunicación, procesos de gestión y estados de inventario para que la operativa del negocio funcione de manera autónoma y eficiente.</p>
                 <ul class="service-list">
-                    <li>Flujos de trabajo personalizados</li>
-                    <li>Integración con software legado</li>
-                    <li>Operatividad garantizada 24/7</li>
+                    <li>Flujos operativos sincronizados</li>
+                    <li>Gestión de inventario en tiempo real</li>
+                    <li>Conectividad entre sistemas</li>
                 </ul>
             </div>
         </div>
@@ -178,7 +190,7 @@
 
 <section id="showcase" class="section dark-bg">
     <div class="container">
-        <h2 class="section-title" data-reveal="up">Showcase de Ingeniería: <span class="highlight">IA en Entornos Controlados</span></h2>
+        <h2 class="section-title" data-reveal="up">Showcase de Demos: <span class="highlight">IA en Entornos Controlados</span></h2>
         <p class="section-desc">Explora demostraciones funcionales diseñadas para resolver desafíos operativos específicos.</p>
         
         <div class="showcase-grid">
@@ -289,7 +301,7 @@
                     </svg>
                 </div>
                 <h3>Escalabilidad sin Fricción</h3>
-                <p>El factor humano es el cuello de botella de cualquier pyme. Tu Agente IA elimina ese techo operativo, atendiendo a decenas de clientes en paralelo con la misma precisión técnica. Escalas tu atención y ventas sin disparar tus costes fijos ni la complejidad de gestión de personal.</p>
+                <p>Implementamos sistemas de crecimiento exponencial con costes controlados gracias a herramientas integradas en servidores propios . Esta infraestructura propia permite un escalado masivo sin costes variables, procesando volúmenes de trabajo elevados sin que la factura mensual se dispare y garantizando una gestión constante sin fricción ni limitaciones de escalado.</p>
             </div>
             
             <div class="feature-card" data-reveal="up" data-reveal-delay="2">
@@ -302,7 +314,7 @@
                     </svg>
                 </div>
                 <h3>Activos Digitales con Memoria</h3>
-                <p>La mayoría de empresas mueren si el dueño se ausenta porque el conocimiento está en su cabeza. Con AgenciAlquimia, cada interacción construye tu propia Bóveda de Datos. Creas un sistema que acumula el "saber hacer" de tu empresa, aumentando su valor de mercado al dejar de depender exclusivamente de ti.</p>
+                <p>Institucionalizamos el conocimiento de tu empresa en una base de datos inteligente que actúa como  central del negocio. Tu equipo puede operar con total autonomía, consultando procesos y resolviendo dudas complejas sin necesidad de que tú estés presente. Transformamos tu experiencia en un activo consultable 24/7, permitiendo que el negocio funcione a pleno rendimiento.</p>
             </div>
 
             <div class="feature-card" data-reveal="up" data-reveal-delay="3">
@@ -311,14 +323,14 @@
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6-8 10 8 10z"></path>
                     </svg>
                 </div>
-                <h3>Estándar de Excelencia Tecnológica</h3>
-                <p>No instalamos herramientas genéricas; desplegamos arquitectura de nivel corporativo adaptada a la agilidad de una pyme. Ofrecer una gestión impecable un domingo a medianoche te posiciona instantáneamente sobre tu competencia. No compites por precio, compites por ser la opción más eficiente y profesional.</p>
+                <h3>Rendimiento de Grandes Ligas</h3>
+                <p>Las soluciones de nivel corporativo suelen ser inaccesibles para una pyme debido a sus altos costes de licencia y mantenimiento. Nuestra arquitectura rompe esa barrera: implementamos sistemas de alto rendimiento optimizados para eliminar gastos operativos innecesarios, permitiéndote competir con la tecnología de los líderes del sector sin soportar su estructura de costes.</p>
             </div>
         </div>
 
         <div class="punchline-container" data-reveal="fade">
             <p class="punchline-text">
-                <em>"Un negocio que requiere tu presencia constante para sobrevivir no es una empresa, es un <strong>autoempleo de alto riesgo</strong>. La arquitectura Alquimia es el puente hacia tu libertad operativa."</em>
+                <em>"No seas el cuello de botella de tu propio éxito. AgenciAlquimia automatiza la operativa repetitiva para que tu equipo trabaje con autonomía y tú recuperes el mando estratégico de tu empresa."</em>
             </p>
         </div>
     </div>
