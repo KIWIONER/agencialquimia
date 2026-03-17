@@ -159,12 +159,6 @@ ul {
     gap: 12px;
 }
 
-.nav-logo {
-    height: 45px;
-    width: auto;
-    filter: drop-shadow(0 0 10px rgba(102, 252, 241, 0.3));
-}
-
 .nav-links {
     display: flex;
     gap: 2rem;
