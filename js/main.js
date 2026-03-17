@@ -10,12 +10,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const sendBtn = document.getElementById('send-btn');
     const chatInput = document.getElementById('user-input');
     const chatHistoryDiv = document.getElementById('chat-history');
-    // Manejo de Session ID para Supabase (Memoria)
-    // Se genera en cada recarga de página para facilitar pruebas sin historial previo
-    let currentSessionId = 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-
+    // Manejo de Session ID persistente para n8n (Memoria)
     function getOrCreateSessionId() {
-        return currentSessionId;
+        let sessionId = localStorage.getItem('agencialquimia_session_id');
+        if (!sessionId) {
+            sessionId = 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+            localStorage.setItem('agencialquimia_session_id', sessionId);
+        }
+        return sessionId;
     }
 
     // Estado del chat (Memoria a corto plazo)

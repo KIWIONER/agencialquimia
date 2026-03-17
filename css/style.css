@@ -2713,3 +2713,78 @@ ul {
 .primary-btn {
     animation: glowPulse 3s infinite ease-in-out;
 }
+/* ==================== MEDIA QUERIES (MOBILE FIX) ==================== */
+@media screen and (max-width: 768px) {
+    .hero-title, .section-title {
+        font-size: 2.2rem !important;
+    }
+    
+    .hero .subtitle {
+        font-size: 1.1rem;
+    }
+
+    .container {
+        padding: 0 1.5rem;
+    }
+
+    /* Grids a 1 columna */
+    .pain-points-grid, 
+    .services-grid, 
+    .showcase-grid, 
+    .features-grid, 
+    .testimonials-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1.5rem;
+    }
+
+    .pain-card, .service-card {
+        padding: 2rem 1.5rem;
+    }
+
+    /* Navigation Mobile */
+    .nav-links {
+        display: none;
+        position: fixed;
+        top: 80px;
+        left: 0;
+        width: 100%;
+        background: var(--glass-bg);
+        flex-direction: column;
+        padding: 2rem;
+        border-bottom: 1px solid var(--border-color);
+        backdrop-filter: blur(15px);
+    }
+
+    .nav-links.active {
+        display: flex;
+    }
+
+    .hamburger {
+        display: block;
+    }
+
+    /* Chat Window Mobile */
+    .chat-window {
+        width: 90vw;
+        right: 5vw;
+        left: 5vw;
+        height: 70vh;
+        bottom: 80px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .hero-title {
+        font-size: 1.8rem !important;
+    }
+    
+    .hero-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .hero-actions button, .hero-actions a {
+        width: 100%;
+        text-align: center;
+    }
+}
