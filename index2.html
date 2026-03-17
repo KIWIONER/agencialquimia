@@ -25,18 +25,59 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="icon" type="image/png" href="/assets/images/favicon.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css?v=16">
     <link rel="stylesheet" href="/css/custom-popup.css">
     <link rel="stylesheet" href="/_astro/dashboard.BqvozU_G.css?v=2">
+    <link rel="icon" type="image/png" href="/assets/images/favicon.png">
+
+    <!-- JSON-LD Structured Data for LocalBusiness SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "name": "AgenciAlquimia",
+      "image": "https://agencialquimia.com/assets/images/logo.png",
+      "@id": "https://agencialquimia.com",
+      "url": "https://agencialquimia.com",
+      "telephone": "+34000000000",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Santiago de Compostela",
+        "addressLocality": "Santiago de Compostela",
+        "addressRegion": "Galicia",
+        "postalCode": "15701",
+        "addressCountry": "ES"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": 42.8782,
+        "longitude": -8.5448
+      },
+      "openingHoursSpecification": {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": [
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday"
+        ],
+        "opens": "09:00",
+        "closes": "18:00"
+      },
+      "sameAs": [
+        "https://www.linkedin.com/company/agencialquimia"
+      ]
+    }
+    </script>
 </head>
 <body>
 
 <nav class="glass-nav">
     <div class="logo">
-        <img src="/assets/images/logo.png" alt="AgenciAlquimia Logo" class="nav-logo">
+        <img src="/assets/images/logo.png" alt="AgenciAlquimia Logo" class="nav-logo" fetchpriority="high">
         <span>Agenci<span class="highlight">Alquimia</span></span>
     </div>
     <button class="hamburger" id="hamburger-btn" aria-label="Abrir menú" aria-expanded="false">
@@ -55,7 +96,7 @@
 
 <main>
 <header class="hero hero-visual-bg">
-    <video autoplay muted loop playsinline class="hero-video">
+    <video autoplay muted loop playsinline class="hero-video" poster="assets/images/hero-bg.png">
         <source src="assets/videos/Cerebro_de_medusa_flotando_en_estrellas.mp4" type="video/mp4">
     </video>
     <div class="hero-overlay"></div>
