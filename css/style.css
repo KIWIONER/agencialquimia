@@ -2010,7 +2010,7 @@ ul {
         display: none !important;
     }
     .hero.hero-visual-bg {
-        background-image: url('../assets/images/hero-bg.png') !important;
+        background-image: url('../assets/images/hero-bg-opt.png') !important;
         background-size: cover;
         background-position: center;
     }
