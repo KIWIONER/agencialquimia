@@ -716,7 +716,7 @@ ul {
 }
 
 .user-message {
-    background: linear-gradient(135deg, var(--accent-dark), #1f2833);
+    background: var(--accent-dark);
     color: #fff;
     align-self: flex-end;
     border-bottom-right-radius: 4px;
