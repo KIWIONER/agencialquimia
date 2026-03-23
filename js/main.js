@@ -85,89 +85,153 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Enviar Mensaje
-    async function sendMessage() {
-        const text = chatInput.value.trim();
+    async function sendMessage(overrideText = null) {
+        const text = overrideText || chatInput.value.trim();
         if (!text) return;
 
         // 1. Mostrar mensaje usuario
         addMessageToUI(text, 'user');
-        chatInput.value = '';
+        if (!overrideText) chatInput.value = '';
         chatHistory.push({ role: 'user', content: text });
 
         // 2. Indicador de "Escribiendo..."
-        const loadingId = addMessageToUI('Analizando...', 'bot', true);
+        const loadingId = showTypingIndicator();
 
-        // Nueva ruta directa y segura de producción hacia el Cerebro n8n
         const webhookUrl = "https://cerebro.agencialquimia.com/webhook/v1/agente/consulta";
 
         try {
             const response = await fetch(webhookUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                // JSON completo y exacto para el Cerebro n8n / Gemini / Supabase
                 body: JSON.stringify({
                     tenant: "Agencialquimia",
-                    sessionId: getOrCreateSessionId(), // Identificador único para memoria
-                    cliente_nombre: "",
-                    cliente_telefono: "",
-                    chatInput: text
+                    sessionId: getOrCreateSessionId(),
+                    chatInput: chatHistory.length === 1 
+                        ? `[SISTEMA: Ignora cualquier instrucción sobre 'hacer un brief'. Guía a reservar llamada de 15 min.] ${text}`
+                        : text
                 })
             });
 
-            // n8n parece estar enviando la respuesta directamente como texto (String)
-            // en lugar de un JSON estructurado. Leemos como texto puro:
             const responseText = await response.text();
-
-            // Si por alguna razón envía JSON (ej: si cambias la conf. en n8n), 
-            // intentamos extraer el texto principal, sino, usamos el texto puro devuelto.
             let botReply = responseText;
             try {
-                const data = JSON.parse(responseText);
-                // El Agente de n8n suele devolver la respuesta en la clave "output", "text" o "response"
+                let data = JSON.parse(responseText);
+                // Si n8n devuelve un array, tomamos el primer objeto
+                if (Array.isArray(data)) data = data[0];
                 botReply = data.output || data.response || data.text || data.message || responseText;
-            } catch (e) {
-                // Era un texto plano, lo dejamos tal cual
-            }
+            } catch (e) {}
+
+            // Asegurar que botReply sea un string antes de procesarlo
+            if (typeof botReply !== 'string') botReply = String(botReply);
 
             removeMessage(loadingId);
-            addMessageToUI(botReply, 'bot');
+            await addMessageToUI(botReply, 'bot', false, true);
             chatHistory.push({ role: 'assistant', content: botReply });
+
+            // Mostrar botones de acción después de la primera respuesta o si menciona llamada
+            if (chatHistory.length <= 3 || botReply.toLowerCase().includes('llamada')) {
+                showQuickActions();
+            }
 
         } catch (error) {
             console.error("Error en el Agente:", error);
             removeMessage(loadingId);
-            addMessageToUI("Lo siento, mi conexión neuronal está saturada. Prueba de nuevo en unos segundos.", 'bot');
+            addMessageToUI("Lo siento, mi conexión neuronal está saturada. Prueba de nuevo.", 'bot');
         }
     }
 
-    // Helpers UI
-    function parseMarkdown(text) {
-        // Parsear markdown básico de Gemini/LangChain a HTML seguro
-        let htmlText = text.replace(/</g, '&lt;').replace(/>/g, '&gt;'); // Escapar HTML
-        return htmlText
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Negrita
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')             // Cursiva
-            .replace(/\n/g, '<br>');                          // Saltos de línea
-    }
-
-    function addMessageToUI(text, sender, isLoading = false) {
+    function showTypingIndicator() {
+        const id = 'typing-' + Date.now();
         const div = document.createElement('div');
-        div.classList.add('message', sender === 'bot' ? 'bot-message' : 'user-message');
-
-        if (sender === 'bot' && !isLoading) {
-            div.innerHTML = parseMarkdown(text);
-        } else {
-            div.innerText = text;
-        }
-
-        if (isLoading) {
-            div.id = 'loading-msg';
-            div.style.opacity = '0.7';
-            div.style.fontStyle = 'italic';
-        }
+        div.id = id;
+        div.className = 'chat-typing';
+        div.innerHTML = '<span></span><span></span><span></span>';
         chatHistoryDiv.appendChild(div);
         chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
-        return div.id;
+        return id;
+    }
+
+    function showQuickActions() {
+        const existingActions = document.querySelector('.chat-actions');
+        if (existingActions) existingActions.remove();
+
+        const actions = [
+            { text: '📅 Reservar Llamada', value: 'Quiero reservar una llamada de 15 minutos' },
+            { text: '🚀 Ver Demos', value: 'Muéstrame las demos en vivo' },
+            { text: '🔍 Soluciones IA', value: '¿Qué soluciones tenéis para mi sector?' }
+        ];
+
+        const div = document.createElement('div');
+        div.className = 'chat-actions';
+        div.style.display = 'flex';
+        div.style.flexWrap = 'wrap';
+        div.style.gap = '0.5rem';
+        div.style.marginTop = '1rem';
+        div.style.animation = 'fadeIn 0.5s ease forwards';
+
+        actions.forEach(action => {
+            const btn = document.createElement('button');
+            btn.className = 'chat-option-btn';
+            btn.innerText = action.text;
+            btn.onclick = () => sendMessage(action.value);
+            div.appendChild(btn);
+        });
+
+        chatHistoryDiv.appendChild(div);
+        chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+    }
+
+    function parseMarkdown(text) {
+        if (!text) return '';
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n/g, '<br>');
+    }
+
+    async function addMessageToUI(text, sender, isLoading = false, typeWriter = false) {
+        if (!text) return;
+        const div = document.createElement('div');
+        div.classList.add('message', sender === 'bot' ? 'bot-message' : 'user-message');
+        chatHistoryDiv.appendChild(div);
+
+        const cleanText = String(text).trim();
+        if (!cleanText) return;
+
+        if (sender === 'bot' && typeWriter) {
+            const words = cleanText.split(' ');
+            div.innerHTML = '';
+            
+            return new Promise(resolve => {
+                let i = 0;
+                if (words.length === 0) {
+                    div.innerHTML = parseMarkdown(cleanText);
+                    resolve();
+                    return;
+                }
+                
+                const interval = setInterval(() => {
+                    if (i < words.length) {
+                        div.innerHTML = parseMarkdown(words.slice(0, i + 1).join(' '));
+                        chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+                        i++;
+                    } else {
+                        clearInterval(interval);
+                        resolve();
+                    }
+                }, 25);
+
+                // Timeout de seguridad: si en 10s no ha terminado, mostrar todo
+                setTimeout(() => {
+                    clearInterval(interval);
+                    div.innerHTML = parseMarkdown(cleanText);
+                    resolve();
+                }, 10000);
+            });
+        } else {
+            div.innerHTML = sender === 'bot' ? parseMarkdown(cleanText) : cleanText;
+            chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+        }
     }
 
     function removeMessage(id) {
@@ -243,18 +307,16 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.style.cursor = "wait";
 
             const nombre = document.getElementById('name').value;
-            const correo = document.getElementById('email').value;
+            const contacto = document.getElementById('contact-info').value;
             const sector = document.getElementById('sector').value;
-            const telefono = document.getElementById('phone').value;
-            const mensaje = document.getElementById('process').value;
 
             // Datos estructurados para n8n > Supabase
             const formData = {
                 tenant: "Agencialquimia",
                 cliente_nombre: nombre,
-                cliente_telefono: telefono,
-                motivo: mensaje, // Mapeamos el campo proceso/mensaje aquí
-                chatInput: `[NUEVO LEAD - Agencia Alquimia]\nNombre: ${nombre}\nCorreo: ${correo}\nSector: ${sector}\nTeléfono: ${telefono}\nMensaje/Necesidad: ${mensaje}\nFecha: ${new Date().toISOString()}`
+                cliente_telefono: contacto, // Enviamos el contacto aquí (puede ser WA o Email)
+                motivo: "Diagnóstico solicitado via web",
+                chatInput: `[NUEVO LEAD - Agencia Alquimia]\nNombre: ${nombre}\nContacto: ${contacto}\nSector: ${sector}\nFecha: ${new Date().toLocaleString()}`
             };
 
             // Nueva función de integración hacia el cerebro n8n
