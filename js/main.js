@@ -424,4 +424,13 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         window.requestAnimationFrame(step);
     }
+
+    // --- CARGA CONDICIONAL DE VIDEO (LCP Optimization) ---
+    const heroVideo = document.getElementById('hero-desktop-video');
+    if (heroVideo && window.innerWidth > 768) {
+        const videoSource = document.createElement('source');
+        videoSource.src = heroVideo.getAttribute('data-src');
+        videoSource.type = 'video/mp4';
+        heroVideo.appendChild(videoSource);
+    }
 });
