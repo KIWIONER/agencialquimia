@@ -28,7 +28,7 @@
     <link rel="preload" as="image" href="assets/images/hero-bg.webp" fetchpriority="high">
     <link rel="stylesheet" href="_astro/dashboard.BqvozU_G.css?v=2">
     <link rel="stylesheet" href="css/custom-popup.css">
-    <link rel="stylesheet" href="css/style.css?v=18">
+    <link rel="stylesheet" href="css/style.css?v=19">
     <link rel="icon" type="image/png" href="assets/images/favicon.png">
 
     <style>
@@ -139,10 +139,10 @@
         <!-- Badge / Status Indicator -->
         <div class="flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
             <span class="relative flex h-2 w-2">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
             </span>
-            <span class="font-label-bold text-sm tracking-widest text-primary uppercase">Agencia Live 24/7</span>
+            <span class="font-label-bold text-sm tracking-widest text-red-500 uppercase">Agencia Live 24/7</span>
         </div>
         <!-- Headline -->
         <h1 class="font-headline-xl text-5xl md:text-6xl tracking-tight max-w-4xl font-bold" style="color: #ffffff !important;">
@@ -180,7 +180,7 @@
             </div>
             <div class="flex flex-col items-center gap-1">
                 <span class="text-primary text-2xl font-bold">WhatsApp</span>
-                <span class="text-on-surface-variant/60 text-[10px] uppercase tracking-widest font-bold">Nativo</span>
+                <span class="text-on-surface-variant/60 text-[10px] uppercase tracking-widest font-bold">Integración</span>
             </div>
             <div class="flex flex-col items-center gap-1">
                 <span class="text-primary text-2xl font-bold">Zero</span>
@@ -215,8 +215,8 @@
             <p class="ops-card-desc" style="font-size: 0.95rem; margin-bottom: 1.5rem;">
                 <strong>El problema:</strong> Un negocio que no responde al instante a un mensaje o consulta, simplemente no existe para ese cliente. Los dueños no pueden estar 24/7 pegados al móvil, y contratar a alguien para ello es inviable.
             </p>
-            <p class="ops-card-desc" style="font-size: 0.95rem; color: #10b981;">
-                <strong>Nuestra solución:</strong> Automatizamos la primera línea de respuesta con IA. El sistema entiende la intención del cliente y le da una respuesta útil de inmediato, manteniendo el negocio abierto y operativo cada segundo del día.
+            <p class="ops-card-desc" style="font-size: 0.95rem; color: #ffffff;">
+                <strong style="color: #10b981;">Nuestra solución:</strong> Automatizamos la primera línea de respuesta con IA. El sistema entiende la intención del cliente y le da una respuesta útil de inmediato, manteniendo el negocio abierto y operativo cada segundo del día.
             </p>
         </div>
 
@@ -231,8 +231,8 @@
             <p class="ops-card-desc" style="font-size: 0.95rem; margin-bottom: 1.5rem;">
                 <strong>El problema:</strong> Los datos de los clientes están repartidos (WhatsApp, email, Instagram) y se pierden por falta de orden. No hay un seguimiento real del cliente.
             </p>
-            <p class="ops-card-desc" style="font-size: 0.95rem; color: #10b981;">
-                <strong>Nuestra solución:</strong> Centralizamos todo el flujo. La infraestructura (n8n + base de datos) captura y organiza cada contacto, convirtiendo el caos en una lista de trabajo ordenada y ejecutable.
+            <p class="ops-card-desc" style="font-size: 0.95rem; color: #ffffff;">
+                <strong style="color: #10b981;">Nuestra solución:</strong> Centralizamos todo el flujo. La infraestructura (n8n + base de datos) captura y organiza cada contacto, convirtiendo el caos en una lista de trabajo ordenada y ejecutable.
             </p>
         </div>
 
@@ -247,8 +247,8 @@
             <p class="ops-card-desc" style="font-size: 0.95rem; margin-bottom: 1.5rem;">
                 <strong>El problema:</strong> Horas perdidas en tareas que no aportan valor: copiar datos de facturas, rellenar formularios o agendar citas manualmente.
             </p>
-            <p class="ops-card-desc" style="font-size: 0.95rem; color: #10b981;">
-                <strong>Nuestra solución:</strong> Usamos la IA para leer y procesar la información. El sistema extrae datos y anota citas automáticamente, eliminando la burocracia técnica para que te dediques a lo que da dinero.
+            <p class="ops-card-desc" style="font-size: 0.95rem; color: #ffffff;">
+                <strong style="color: #10b981;">Nuestra solución:</strong> Usamos la IA para leer y procesar la información. El sistema extrae datos y anota citas automáticamente, eliminando la burocracia técnica para que te dediques a lo que da dinero.
             </p>
         </div>
     </div>
@@ -528,14 +528,14 @@
             </a>
 
             <!-- Sector 02: Restaurant -->
-            <a href="https://mercadolagaliciana.agencialquimia.com/" target="_blank" rel="noopener noreferrer" class="v-card" data-reveal="up" data-reveal-delay="2">
-                <div class="v-badge"><div class="v-badge-dot"></div> LIVE DEMO</div>
+            <div class="v-card locked" data-reveal="up" data-reveal-delay="2">
+                <div class="v-badge locked"><span class="material-symbols-outlined" style="font-size: 14px;">lock</span> BLOQUEADO</div>
                 <div class="v-card-content">
                     <span class="v-sector">GASTRO_OPS</span>
                     <h3 class="v-heading">Hostelería</h3>
-                    <p class="v-desc">Reservas autónomas y gestión de comandas. Deja que la IA maneje el teléfono mientras tú cocinas.</p>
+                    <p class="v-desc">Reservas autónomas y gestión de comandas. Acceso disponible tras la primera llamada de diagnóstico.</p>
                 </div>
-            </a>
+            </div>
 
             <!-- Sector 03: Wellness -->
             <a href="https://centromelros.agencialquimia.com/" target="_blank" rel="noopener noreferrer" class="v-card" data-reveal="up" data-reveal-delay="3">
@@ -548,14 +548,14 @@
             </a>
 
             <!-- Sector 04: Real Estate -->
-            <a href="https://inmobiliaria.agencialquimia.com/" target="_blank" rel="noopener noreferrer" class="v-card" data-reveal="up" data-reveal-delay="1">
-                <div class="v-badge"><div class="v-badge-dot"></div> LIVE DEMO</div>
+            <div class="v-card locked" data-reveal="up" data-reveal-delay="1">
+                <div class="v-badge locked"><span class="material-symbols-outlined" style="font-size: 14px;">lock</span> BLOQUEADO</div>
                 <div class="v-card-content">
                     <span class="v-sector">REAL_ESTATE_INTEL</span>
                     <h3 class="v-heading">Inmobiliaria</h3>
-                    <p class="v-desc">Cualificación de leads en tiempo real. Filtra compradores reales de curiosos automáticamente.</p>
+                    <p class="v-desc">Cualificación de leads en tiempo real. Acceso restringido hasta completar la sesión estratégica.</p>
                 </div>
-            </a>
+            </div>
 
             <!-- Sector 05: Formación -->
             <a href="https://lms.agencialquimia.com/" target="_blank" rel="noopener noreferrer" class="v-card" data-reveal="up" data-reveal-delay="2">

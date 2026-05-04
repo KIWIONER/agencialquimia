@@ -3357,7 +3357,7 @@ ul {
 }
 
 .eng-v2-card {
-    background: #000000;
+    background: #041311;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -4142,7 +4142,7 @@ ul {
 }
 
 .ops-card {
-    background: #000000;
+    background: #041311;
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 0.75rem;
@@ -4262,10 +4262,43 @@ ul {
 }
 
 .checkbox-group input[type="checkbox"] { 
-    width: 20px !important; 
-    height: 20px !important; 
-    accent-color: var(--accent-color) !important; 
-    margin-top: 2px !important; 
+    width: 22px !important;
+    height: 22px !important;
+    margin-top: 2px !important;
+    flex-shrink: 0 !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    border: 1.5px solid #d1d5db !important;
+    border-radius: 6px !important;
+    background: #ffffff !important;
+    display: grid !important;
+    place-content: center !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+.checkbox-group input[type="checkbox"]::after {
+    content: "" !important;
+    width: 6px !important;
+    height: 10px !important;
+    border: solid #ffffff !important;
+    border-width: 0 2px 2px 0 !important;
+    transform: rotate(45deg) scale(0) !important;
+    transition: transform 0.15s ease !important;
+}
+
+.checkbox-group input[type="checkbox"]:checked {
+    background: var(--accent-color) !important;
+    border-color: var(--accent-color) !important;
+}
+
+.checkbox-group input[type="checkbox"]:checked::after {
+    transform: rotate(45deg) scale(1) !important;
+}
+
+.checkbox-group input[type="checkbox"]:focus-visible {
+    outline: 2px solid rgba(16, 185, 129, 0.35) !important;
+    outline-offset: 2px !important;
 }
 
 .checkbox-group label { 
@@ -4275,6 +4308,7 @@ ul {
     color: #9ca3af !important; 
     font-weight: 400 !important; 
     margin: 0 !important; 
+    cursor: pointer !important;
 }
 
 /* SECCION PRECIOS - MODO CLARO PREMIUM */
@@ -4604,6 +4638,70 @@ ul {
     0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
     70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
     100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* --- LOCKED STATE FOR DEMOS --- */
+.v-card.locked {
+    cursor: not-allowed;
+    background: linear-gradient(145deg, #f9fafb 0%, #f3f4f6 100%);
+    border-color: rgba(0, 0, 0, 0.05);
+    position: relative;
+}
+
+.v-card.locked .v-card-content {
+    filter: grayscale(0.8);
+    opacity: 0.5;
+    transition: all 0.3s ease;
+}
+
+.v-card.locked:hover {
+    transform: translateY(-5px);
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+.v-card.locked:hover .v-card-content {
+    filter: grayscale(0.4);
+    opacity: 0.7;
+}
+
+.v-badge.locked {
+    background: #111827;
+    color: #ffffff;
+    border: 1px solid #374151;
+}
+
+.v-badge.locked .material-symbols-outlined {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Tooltip para tarjetas bloqueadas */
+.v-card.locked::after {
+    content: 'Para desbloquearlo agenda una llamada';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -40%);
+    background: rgba(2, 44, 34, 0.95);
+    color: #10b981;
+    padding: 0.8rem 1.2rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-align: center;
+    white-space: nowrap;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    pointer-events: none;
+    z-index: 10;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    backdrop-filter: blur(4px);
+}
+
+.v-card.locked:hover::after {
+    opacity: 1;
+    transform: translate(-50%, -50%);
 }
 
 /* --- DIAGRAMA ARQUITECTÓNICO (Frontend vs Backend) --- */
