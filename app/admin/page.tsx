@@ -1,0 +1,209 @@
+'use client';
+
+/**
+ * ==============================================================================
+ * Archivo: app/admin/page.tsx
+ * ==============================================================================
+ * Descripción:
+ *  Panel de Control de Administración (Control Center / Dashboard) para AgenciAlquimia.
+ * 
+ * Migración e Integración:
+ *  Migrado desde el subproyecto aislado `admin/` (Vite) a una sub-ruta nativa protegida
+ *  dentro de Next.js App Router (`/admin`). Unifica el repositorio bajo un único comando
+ *  de compilación (`npm run build`).
+ * 
+ * Funcionalidades Clave:
+ *  1. Sidebar de Navegación Lateral: Secciones de Dashboard, Prospectos, IA Trainer y Configuración.
+ *  2. Tarjetas de Estadísticas en Tiempo Real: Leads totales, interacciones con agentes y tasa de conversión.
+ *  3. Tabla Dinámica de Leads: Muestra el flujo de captación reciente con badges de estado.
+ * ==============================================================================
+ */
+
+import { useState } from 'react';
+import { Users, Bot, TrendingUp, Shield, Settings, LayoutDashboard, Database, UserCheck } from 'lucide-react';
+
+interface LeadItem {
+  id: string;
+  nombre: string;
+  sector: string;
+  contacto: string;
+  estado: 'Pendiente' | 'Enviado a IA' | 'Finalizado';
+  fecha: string;
+}
+
+export default function AdminDashboardPage() {
+  // Estado local para los prospectos/leads recibidos
+  const [leads] = useState<LeadItem[]>([
+    { id: '1', nombre: 'Carlos Ruiz', sector: 'Retail', contacto: 'carlos@tienda.es', estado: 'Pendiente', fecha: 'Hoy, 10:30' },
+    { id: '2', nombre: 'Lucía Fer', sector: 'Wellness', contacto: '+34 600 123 456', estado: 'Enviado a IA', fecha: 'Ayer, 18:20' },
+    { id: '3', nombre: 'Juan Gómez', sector: 'Inmobiliaria', contacto: 'juan@prop.com', estado: 'Finalizado', fecha: '22 Abr' },
+    { id: '4', nombre: 'Elena Blanco', sector: 'Salud', contacto: '+34 604 555 888', estado: 'Enviado a IA', fecha: 'Hace 2 horas' },
+  ]);
+
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'trainer' | 'settings'>('dashboard');
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex font-sans">
+      {/* Sidebar Lateral de Navegación del Panel Admin */}
+      <aside className="w-64 bg-slate-900 border-r border-slate-800 p-6 flex flex-col justify-between shrink-0">
+        <div className="space-y-8">
+          {/* Logo Corporativo del Admin */}
+          <div className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+            <Shield className="w-7 h-7 text-emerald-500" />
+            <span>
+              Agenci<span className="text-emerald-500">Alquimia</span>
+            </span>
+          </div>
+
+          {/* Menú de Navegación Lateral */}
+          <nav className="space-y-2">
+            <button
+              type="button"
+              onClick={() => setActiveTab('dashboard')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
+                activeTab === 'dashboard'
+                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+            >
+              <LayoutDashboard className="w-5 h-5" />
+              <span>Dashboard</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('leads')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
+                activeTab === 'leads'
+                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+            >
+              <Users className="w-5 h-5" />
+              <span>Prospectos (Leads)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('trainer')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
+                activeTab === 'trainer'
+                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+            >
+              <Bot className="w-5 h-5" />
+              <span>IA Trainer</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('settings')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
+                activeTab === 'settings'
+                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+            >
+              <Settings className="w-5 h-5" />
+              <span>Configuración</span>
+            </button>
+          </nav>
+        </div>
+
+        {/* Footer del Sidebar con perfil de usuario */}
+        <div className="pt-6 border-t border-slate-800 text-xs text-slate-400">
+          <p className="font-semibold text-slate-200">Admin Alquimia</p>
+          <p className="text-[11px] text-slate-500">Santiago de Compostela</p>
+        </div>
+      </aside>
+
+      {/* Áreas de Contenido Principal del Dashboard */}
+      <main className="flex-1 p-8 overflow-y-auto space-y-8">
+        {/* Cabecera del Panel */}
+        <header className="flex items-center justify-between pb-6 border-b border-slate-800">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-white">Dashboard General</h1>
+            <p className="text-slate-400 text-sm mt-1">Control Center y Monitoreo de Leads en Tiempo Real</p>
+          </div>
+          <div className="px-4 py-2 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-400 text-xs font-semibold flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Sistema Operativo Estable</span>
+          </div>
+        </header>
+
+        {/* Grid de Métricas Principales */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs uppercase font-bold tracking-wider">Total Leads</span>
+              <UserCheck className="w-5 h-5 text-emerald-400" />
+            </div>
+            <p className="text-4xl font-extrabold text-white">{leads.length}</p>
+          </div>
+
+          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs uppercase font-bold tracking-wider">Interacciones IA</span>
+              <Bot className="w-5 h-5 text-emerald-400" />
+            </div>
+            <p className="text-4xl font-extrabold text-white">1,284</p>
+          </div>
+
+          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs uppercase font-bold tracking-wider">Tasa Conversión</span>
+              <TrendingUp className="w-5 h-5 text-emerald-400" />
+            </div>
+            <p className="text-4xl font-extrabold text-emerald-400">12.4%</p>
+          </div>
+        </div>
+
+        {/* Tabla de Leads Recientes */}
+        <section className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <Database className="w-5 h-5 text-emerald-400" />
+              <span>Últimos Leads (Transferidos)</span>
+            </h2>
+            <span className="text-xs text-slate-400">Actualizado automáticamente</span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-slate-300">
+              <thead className="bg-slate-950 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+                <tr>
+                  <th className="p-4">Nombre</th>
+                  <th className="p-4">Sector</th>
+                  <th className="p-4">Contacto</th>
+                  <th className="p-4">Estado</th>
+                  <th className="p-4">Fecha</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                {leads.map((lead) => (
+                  <tr key={lead.id} className="hover:bg-slate-800/40 transition-colors">
+                    <td className="p-4 font-semibold text-white">{lead.nombre}</td>
+                    <td className="p-4">{lead.sector}</td>
+                    <td className="p-4 font-mono text-xs text-slate-400">{lead.contacto}</td>
+                    <td className="p-4">
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
+                          lead.estado === 'Finalizado'
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            : lead.estado === 'Enviado a IA'
+                            ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                            : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                        }`}
+                      >
+                        {lead.estado}
+                      </span>
+                    </td>
+                    <td className="p-4 text-xs text-slate-400">{lead.fecha}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}

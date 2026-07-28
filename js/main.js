@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
     const hamburgerBtn = document.getElementById('hamburger-btn');
     const navLinks = document.getElementById('nav-links');
+    const glassNav = document.querySelector('.glass-nav');
 
     // --- LÓGICA DEL AGENTE IA (CHAT) ---
     const chatTrigger = document.getElementById('chat-trigger');
@@ -10,6 +11,78 @@ document.addEventListener('DOMContentLoaded', () => {
     const sendBtn = document.getElementById('send-btn');
     const chatInput = document.getElementById('user-input');
     const chatHistoryDiv = document.getElementById('chat-history');
+    const navChatBtn = document.getElementById('nav-chat-btn');
+    let lastChatTrigger = null;
+
+    function syncMenuAccessibility() {
+        if (!hamburgerBtn || !navLinks) return;
+
+        const isDesktop = window.innerWidth > 768;
+        const isOpen = isDesktop || navLinks.classList.contains('active');
+
+        hamburgerBtn.setAttribute('aria-expanded', String(isOpen));
+        navLinks.setAttribute('aria-hidden', String(!isOpen));
+    }
+
+    function closeMenu() {
+        if (!hamburgerBtn || !navLinks) return;
+
+        navLinks.classList.remove('active');
+        hamburgerBtn.classList.remove('active');
+        if (glassNav) glassNav.classList.remove('active');
+        syncMenuAccessibility();
+    }
+
+    function openMenu() {
+        if (!hamburgerBtn || !navLinks) return;
+
+        navLinks.classList.add('active');
+        hamburgerBtn.classList.add('active');
+        if (glassNav) glassNav.classList.add('active');
+        syncMenuAccessibility();
+    }
+
+    function isChatOpen() {
+        return !!chatWindow && !chatWindow.classList.contains('hidden');
+    }
+
+    function syncChatAccessibility() {
+        if (!chatWindow) return;
+
+        const expanded = String(isChatOpen());
+        chatWindow.setAttribute('aria-hidden', String(!isChatOpen()));
+        if (chatTrigger) chatTrigger.setAttribute('aria-expanded', expanded);
+        if (navChatBtn) navChatBtn.setAttribute('aria-expanded', expanded);
+    }
+
+    function openChat(triggerEl = null) {
+        if (!chatWindow) return;
+
+        lastChatTrigger = triggerEl || lastChatTrigger;
+        chatWindow.classList.remove('hidden');
+        syncChatAccessibility();
+        if (chatInput) chatInput.focus();
+    }
+
+    function closeChat() {
+        if (!chatWindow) return;
+
+        chatWindow.classList.add('hidden');
+        syncChatAccessibility();
+        if (window.visualViewport) chatWindow.style.height = '';
+        if (lastChatTrigger && typeof lastChatTrigger.focus === 'function') {
+            lastChatTrigger.focus();
+        }
+    }
+
+    function toggleChat(triggerEl = null) {
+        if (isChatOpen()) {
+            closeChat();
+        } else {
+            openChat(triggerEl);
+        }
+    }
+
     // Manejo de Session ID persistente para n8n (Memoria)
     function getOrCreateSessionId() {
         let sessionId = localStorage.getItem('agencialquimia_session_id');
@@ -26,15 +99,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Abrir/Cerrar
     if (chatTrigger) {
         chatTrigger.addEventListener('click', () => {
-            chatWindow.classList.toggle('hidden');
-            if (!chatWindow.classList.contains('hidden')) chatInput.focus();
+            toggleChat(chatTrigger);
         });
     }
     if (closeChatBtn) {
         closeChatBtn.addEventListener('click', () => {
-            chatWindow.classList.add('hidden');
-            // Reset height when closing
-            if (window.visualViewport) chatWindow.style.height = '';
+            closeChat();
         });
     }
 
@@ -65,22 +135,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (startAgentBtn) {
         startAgentBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            if (chatWindow && chatWindow.classList.contains('hidden')) {
-                chatWindow.classList.remove('hidden');
-                if (chatInput) chatInput.focus();
-            }
+            openChat(startAgentBtn);
         });
     }
 
     // Nav chat button opens chat
-    const navChatBtn = document.getElementById('nav-chat-btn');
     if (navChatBtn) {
         navChatBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            if (chatWindow) {
-                chatWindow.classList.toggle('hidden');
-                if (!chatWindow.classList.contains('hidden') && chatInput) chatInput.focus();
-            }
+            toggleChat(navChatBtn);
         });
     }
 
@@ -145,6 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const div = document.createElement('div');
         div.id = id;
         div.className = 'chat-typing';
+        div.setAttribute('aria-hidden', 'true');
         div.innerHTML = '<span></span><span></span><span></span>';
         chatHistoryDiv.appendChild(div);
         chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
@@ -242,8 +306,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Chat Listeners
     if (sendBtn) sendBtn.addEventListener('click', sendMessage);
     if (chatInput) {
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendMessage();
+            }
         });
     }
     // Smooth Scrolling
@@ -259,22 +326,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             // Close mobile menu after clicking a link
             if (navLinks && navLinks.classList.contains('active')) {
-                navLinks.classList.remove('active');
-                hamburgerBtn.classList.remove('active');
-                if (glassNav) glassNav.classList.remove('active');
-                hamburgerBtn.setAttribute('aria-expanded', 'false');
+                closeMenu();
             }
         });
     });
 
     // --- Hamburger Menu ---
-    const glassNav = document.querySelector('.glass-nav');
     if (hamburgerBtn && navLinks) {
         hamburgerBtn.addEventListener('click', () => {
-            const isOpen = navLinks.classList.toggle('active');
-            hamburgerBtn.classList.toggle('active');
-            if (glassNav) glassNav.classList.toggle('active');
-            hamburgerBtn.setAttribute('aria-expanded', isOpen);
+            if (navLinks.classList.contains('active')) {
+                closeMenu();
+            } else {
+                openMenu();
+            }
         });
 
         // Close menu when clicking outside
@@ -282,13 +346,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (navLinks.classList.contains('active') &&
                 !navLinks.contains(e.target) &&
                 !hamburgerBtn.contains(e.target)) {
-                navLinks.classList.remove('active');
-                hamburgerBtn.classList.remove('active');
-                if (glassNav) glassNav.classList.remove('active');
-                hamburgerBtn.setAttribute('aria-expanded', 'false');
+                closeMenu();
             }
         });
     }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (isChatOpen()) closeChat();
+            if (navLinks && navLinks.classList.contains('active')) closeMenu();
+        }
+    });
+
+    window.addEventListener('resize', syncMenuAccessibility);
+    syncMenuAccessibility();
+    syncChatAccessibility();
 
     // --- Form Submission (with popup integration) ---
     const contactForm = document.getElementById('audit-form');

@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/**
+ * ==============================================================================
+ * Archivo: app/globals.css
+ * ==============================================================================
+ * Descripción:
+ *  Hojas de estilo globales y tokens del Sistema de Diseño Negro-Grisáceo (Dark Charcoal Theme).
+ * 
+ * Estética Visual (Negro-Grisáceo Premium):
+ *  1. Fondo Principal: Tono negro-grisáceo carbón profundo (#0b0d10 / #0e1116) con entramado radial.
+ *  2. Tarjetas y Cristales: Fondo gris oscuro (#161a22 / #1a1f28) con bordes finos esmeralda translúcidos.
+ *  3. Acentos de Marca: Destacados neón en verde esmeralda (#10b981, #34d399) para CTAs e iconos.
+ * ==============================================================================
+ */
+
+@layer base {
+  :root {
+    --bg-dark: #0b0d10;
+    --card-dark: #161a22;
+    --border-dark: rgba(16, 185, 129, 0.25);
+    --text-bright: #f3f4f6;
+    --text-muted: #9ca3af;
+    --accent-emerald: #10b981;
+    --accent-glow: #34d399;
+  }
+
+  /* Estilos base del cuerpo en fondo Negro-Grisáceo */
+  body {
+    background-color: #0b0d10;
+    background-image: radial-gradient(rgba(16, 185, 129, 0.12) 1.5px, transparent 1.5px);
+    background-size: 32px 32px;
+    background-position: center top;
+    color: #f3f4f6;
+    font-family: var(--font-inter), sans-serif;
+  }
+
+  /* Estilos de encabezados en Blanco brillante */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-space-grotesk), sans-serif;
+    color: #ffffff;
+  }
+}
+
+/* Efecto de resplandor ambiental sobre el fondo negro-grisáceo */
+.hero-glow {
+  background: radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.18) 0%, rgba(11, 13, 16, 0) 70%);
+}
+
+/* Barra de navegación Glassmorphism Negro-Grisáceo */
+.glass-nav {
+  background: rgba(11, 13, 16, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Tarjetas y módulos en cristal gris oscuro (#161a22) */
+.glass-card-dark {
+  background: rgba(22, 26, 34, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
+}
+
+/* Sombra de brillo para botones de acción principales */
+.emerald-shadow-glow {
+  box-shadow: 0 0 30px -5px rgba(16, 185, 129, 0.35);
+}
