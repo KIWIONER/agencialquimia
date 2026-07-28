@@ -1,0 +1,20 @@
+# ==============================================================================
+# Archivo: .gitattributes
+# ==============================================================================
+# Configuración de GitHub Linguist para calcular correctamente las estadísticas
+# del stack tecnológico (TypeScript, React, TailwindCSS).
+# ==============================================================================
+
+# Marcar documentación y planes como documentación (no cuentan en lenguajes)
+*.md linguist-documentation
+.github/* linguist-documentation
+CONTEXT.md linguist-documentation
+MEMORY/* linguist-documentation
+
+# Marcar recursos estáticos públicos como vendored (imágenes, fuentes, favicons)
+public/* linguist-vendored
+public/assets/* linguist-vendored
+
+# Ignorar archivos de configuración de entorno
+.env.example linguist-documentation
+.env.local linguist-documentation
