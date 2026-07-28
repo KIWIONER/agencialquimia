@@ -7,39 +7,37 @@
  * Descripción:
  *  Hojas de estilo globales y tokens del Sistema de Diseño Negro-Grisáceo (Dark Charcoal Theme).
  * 
- * Estética Visual (Negro-Grisáceo Premium):
- *  1. Fondo Principal: Tono negro-grisáceo carbón profundo (#0b0d10 / #0e1116) con entramado radial.
- *  2. Tarjetas y Cristales: Fondo gris oscuro (#161a22 / #1a1f28) con bordes finos esmeralda translúcidos.
- *  3. Acentos de Marca: Destacados neón en verde esmeralda (#10b981, #34d399) para CTAs e iconos.
+ * Optimización WPO & Zero FOIT:
+ *  1. Fallback de Fuentes del Sistema: Garantiza el renderizado instantáneo del texto en pantalla
+ *     mientras la fuente WOFF2 termina de cargar en segundo plano.
+ *  2. Previene el encadenamiento de solicitudes críticas bloqueantes (LCP).
  * ==============================================================================
  */
 
-@layer base {
-  :root {
-    --bg-dark: #0b0d10;
-    --card-dark: #161a22;
-    --border-dark: rgba(16, 185, 129, 0.25);
-    --text-bright: #f3f4f6;
-    --text-muted: #9ca3af;
-    --accent-emerald: #10b981;
-    --accent-glow: #34d399;
-  }
+:root {
+  --bg-dark: #0b0d10;
+  --card-dark: #161a22;
+  --border-dark: rgba(16, 185, 129, 0.25);
+  --text-bright: #f3f4f6;
+  --text-muted: #9ca3af;
+  --accent-emerald: #10b981;
+  --accent-glow: #34d399;
+}
 
-  /* Estilos base del cuerpo en fondo Negro-Grisáceo */
-  body {
-    background-color: #0b0d10;
-    background-image: radial-gradient(rgba(16, 185, 129, 0.12) 1.5px, transparent 1.5px);
-    background-size: 32px 32px;
-    background-position: center top;
-    color: #f3f4f6;
-    font-family: var(--font-inter), sans-serif;
-  }
+/* Estilos base del cuerpo en fondo Negro-Grisáceo con fallback del sistema WPO */
+body {
+  background-color: #0b0d10;
+  background-image: radial-gradient(rgba(16, 185, 129, 0.12) 1.5px, transparent 1.5px);
+  background-size: 32px 32px;
+  background-position: center top;
+  color: #f3f4f6;
+  font-family: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
 
-  /* Estilos de encabezados en Blanco brillante */
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-space-grotesk), sans-serif;
-    color: #ffffff;
-  }
+/* Estilos de encabezados con fallback del sistema WPO */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-space-grotesk), system-ui, -apple-system, sans-serif;
+  color: #ffffff;
 }
 
 /* Efecto de resplandor ambiental sobre el fondo negro-grisáceo */

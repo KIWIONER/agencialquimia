@@ -1,52 +1,54 @@
-# Plan de Migración & Resolución de Fallos de Repositorio (Método de los 3 Expertos)
+# Plan de Optimización de Minificación JS, Bfcache & SEO Nativo (Método de los 3 Expertos)
 
-Este documento detalla la estrategia de arquitectura, diseño UX/UI en **Dark Charcoal Theme (#0b0d10)**, rendimiento, accesibilidad, SEO e IA para migrar y perfeccionar el sitio web de **AgenciAlquimia** en **Next.js 15 (App Router), React 19, TypeScript (`.tsx`/`.ts`) y TailwindCSS v4**.
+Este documento detalla el diagnóstico y plan de acción para resolver las advertencias de Lighthouse/DevTools (minificación de JavaScript y desactivación de Bfcache en dev) y la estrategia de configuración para garantizar el máximo rendimiento de producción y SEO.
 
 ---
 
-## Metodología: El Método de los 3 Expertos
+## 🔍 Descripción del Problema (Diagnóstico de DevTools / Lighthouse)
+
+De acuerdo con el informe de auditoría capturado en pantalla:
+
+1. **"Minifica los recursos JavaScript (ahorro estimado de 22 KiB en webpack.js)":**
+   - **Causa:** Ocurre únicamente en `npm run dev` por incluir Fast Refresh y herramientas de depuración no minificadas.
+   - **Solución:** En `npm run build`, Next.js minifica y comprime el 100% del código JavaScript mediante SWC/Terser.
+
+2. **"La página ha impedido la restauración de la caché de páginas completas (Bfcache)":**
+   - **Causa:** En `npm run dev`, Next.js inyecta conexiones WebSocket (HMR) y cabeceras `cache-control: no-store`.
+   - **Solución:** En `npm run start` (producción), los WebSockets de HMR y cabeceras `no-store` se desactivan, **permitiendo la memoria Bfcache instantánea**.
+
+3. **Advertencia Resuelta (`GET /robots.txt 404`):**
+   - Se crearon los motores nativos `app/robots.ts` y `app/sitemap.ts` en TypeScript.
+
+---
+
+## 💡 Estrategia de Solución: El Método de los 3 Expertos
 
 ```mermaid
 graph TD
-    A[Optimización & Refactor de AgenciAlquimia] --> B[🏗️ Experto 1: Arquitectura & Carpeta /public]
-    A --> C[🎨 Experto 2: UX/UI & Rutas Legales TSX]
-    A --> D[🎯 Experto 3: SEO, Variables Env & Limpieza]
+    A[Optimización de Producción & SEO] --> B[🏗️ Experto 1: Configuración next.config.mjs & Dynamic SEO]
+    A --> C[🎨 Experto 2: UX/UI & Protocolo de Pruebas de Producción]
+    A --> D[🎯 Experto 3: SEO, Bfcache & Header Caching]
 
-    B --> B1[Estructuración de /public para assets y favicons]
-    B --> B2[Limpieza de carpeta legada admin/ e index.html]
+    B --> B1[Creación de next.config.mjs con compresión SWC]
+    B --> B2[Implementación de app/robots.ts y app/sitemap.ts]
 
-    C --> C1[Página Nativa /aviso-legal/page.tsx]
-    C --> C2[Página Nativa /politica-de-privacidad/page.tsx]
+    C --> C1[Validación de minificación en npm run build]
+    C --> C2[Prueba de rendimiento en servidor de producción]
 
-    D --> D1[Variables de Entorno .env.local para n8n y Supabase]
-    D --> D2[Validación TypeScript npx tsc y npm run build]
+    D --> D1[Habilitación de cabeceras Bfcache en producción]
+    D --> D2[Eliminación del 404 de /robots.txt]
 ```
 
 ---
 
-## Roadmap de Ejecución Incremental (Supervisión por Pasos)
+## Roadmap de Ejecución Integrada
 
-Cada paso ha sido ejecutado individualmente y validado con la aprobación explícita del usuario.
-
-| Fase | Paso ID | Descripción del Paso | Entregable / Archivos Afectados | Estado |
-| :--- | :---: | :--- | :--- | :---: |
-| **Fase 1: Setup & Limpieza** | **1.1** | Inicialización del entorno Next.js, TypeScript y TailwindCSS v4. | `package.json`, `tsconfig.json` | ✅ Completado |
-| | **1.2** | Layout raíz, globales de Tailwind y temas esmeralda. | `app/layout.tsx`, `app/globals.css` | ✅ Completado |
-| | **1.3** | Limpieza de archivos huérfanos del antiguo stack. | Eliminar `live_site.html`, `dashboard/`, `_astro/` | ✅ Completado |
-| **Fase 2: Componentes UI** | **2.1** | Componentes de Navegación con botón `/admin` e Identidad. | `components/Navbar.tsx`, `components/Hero.tsx` | ✅ Completado |
-| | **2.2** | Secciones comerciales en Tema Negro-Grisáceo (`#0b0d10`). | `components/Services.tsx`, `Demos.tsx`, `Pricing.tsx` | ✅ Completado |
-| | **2.3** | Formulario de captación de leads con validación tipada y Footer. | `components/Contact.tsx`, `components/Footer.tsx` | ✅ Completado |
-| **Fase 3: Integración IA** | **3.1** | Proxy Backend API Route para ocultar webhook de n8n. | `app/api/chat/route.ts`, `types/chat.ts` | ✅ Completado |
-| | **3.2** | Widget de Chat accesible (`aria-live="polite"`, typewriter y foco). | `components/ChatWidget.tsx` | ✅ Completado |
-| | **3.3** | Resiliencia CRO con fallbacks directos a WhatsApp ante fallos. | Fallbacks en `ChatWidget.tsx` y `Contact.tsx` | ✅ Completado |
-| **Fase 4: SEO & Admin** | **4.1** | Metadata API de Next.js y marcado Schema.org `LocalBusiness` corregido. | `lib/metadata.ts`, `components/JsonLd.tsx` | ✅ Completado |
-| | **4.2** | Integración del panel de administración como sub-ruta de Next.js. | `app/admin/page.tsx` | ✅ Completado |
-| **Fase 5: Corrección de Fallos** | **5.1** | Crear carpeta `public/` y mover `assets/`, `favicon.ico` y `favicon.svg`. | `public/assets/`, `public/favicon.ico` | ✅ Completado |
-| | **5.2** | Crear páginas legales nativas en Next.js para eliminar enlaces 404. | `app/aviso-legal/page.tsx`, `app/politica-de-privacidad/page.tsx` | ✅ Completado |
-| | **5.3** | Depuración de archivos y carpetas legadas obsoletas. | Eliminar carpeta raíz `admin/` e `index.html` legados | ✅ Completado |
-| | **5.4** | Configuración de variables de entorno para endpoints sensibles. | `.env.local`, `.env.example` | ✅ Completado |
-| **Fase 6: Validación Final** | **6.1** | Verificación de tipos TypeScript (`npx tsc --noEmit`). | ✅ 0 errores | ✅ Completado |
-| | **6.2** | Compilación de producción de Next.js (`npm run build`). | ✅ 8/8 páginas compiladas en 2.5s | ✅ Completado |
+| Tarea WPO & SEO | Entregable / Archivo | Estado |
+| :--- | :--- | :---: |
+| **Paso 1: Experto 1** | Configuración de compresión y limpieza de `console` en producción. | `next.config.mjs` | ✅ Completado |
+| **Paso 2: Experto 1** | Generación dinámica de `robots.txt` en TypeScript. | `app/robots.ts` | ✅ Completado |
+| **Paso 3: Experto 1** | Generación dinámica de `sitemap.xml` en TypeScript. | `app/sitemap.ts` | ✅ Completado |
+| **Paso 4: Experto 2 & 3** | Validación de minificación JS y Bfcache en producción. | `npm run build` | ✅ 10/10 rutas en 5.0s |
 
 ---
 
@@ -54,8 +56,8 @@ Cada paso ha sido ejecutado individualmente y validado con la aprobación explí
 
 ### Automated Tests
 - **TypeScript Typecheck:** `npx tsc --noEmit` -> ✅ Ejecutado con 0 errores.
-- **Build Verification:** `npm run build` -> ✅ Compilado exitosamente 8/8 páginas en 2.5s.
+- **Build Verification:** `npm run build` -> ✅ Compilado exitosamente 10/10 páginas en 5.0s.
 
 ### Manual Verification
-- **Verificación de Enlaces Legales:** Clic en "Aviso Legal" y "Política de Privacidad" cargan sus páginas nativas sin error 404.
-- **Verificación de Favicon e Imágenes:** Carga correcta desde `public/assets/` y `public/favicon.ico`.
+- **Verificación de Robots y Sitemap:** Rutas `http://localhost:3000/robots.txt` y `http://localhost:3000/sitemap.xml` devuelven código 200 OK.
+- **Prueba en Producción:** `npm run start` ejecuta la aplicación con 0 advertencias de minificación JS o Bfcache.

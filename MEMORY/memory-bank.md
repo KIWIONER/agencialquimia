@@ -27,13 +27,16 @@ agencialquimia/
 │   ├── api/chat/               # Backend Proxy Seguro para el agente de n8n (/api/chat)
 │   ├── aviso-legal/            # Página legal nativa en TypeScript (/aviso-legal)
 │   ├── politica-de-privacidad/ # Página legal nativa en TypeScript (/politica-de-privacidad)
-│   ├── globals.css             # Hojas de estilo globales y tokens de TailwindCSS v4
-│   ├── layout.tsx              # Root Layout con fuentes optimizadas y marcado JsonLd
+│   ├── robots.ts               # Generador dinámico nativo de robots.txt (/robots.txt)
+│   ├── sitemap.ts              # Generador dinámico nativo de sitemap.xml (/sitemap.xml)
+│   ├── globals.css             # Estilos globales con fallbacks WPO y tokens de TailwindCSS v4
+│   ├── layout.tsx              # Root Layout con fuentes precargadas (WPO), JsonLd y Preconnect
 │   └── page.tsx                # Landing Page Principal en Dark Charcoal Theme (#0b0d10)
 ├── components/                 # Componentes React TSX Modulares (Navbar, Hero, Services, etc.)
 ├── public/                     # Recursos estáticos servidos nativamente por Next.js (assets, favicons)
 ├── lib/                        # Utilidades centralizadas (metadata.ts para SEO)
 ├── types/                      # Interfaces TypeScript estrictas (chat.ts)
+├── next.config.mjs             # Configuración de compilación SWC y compresión Brotli/Gzip
 ├── .env.local / .env.example   # Variables de entorno parametrizadas (N8N_WEBHOOK_URL)
 ├── .github/                    # Planes de implementación (implementation-plan.md)
 ├── audit/                      # Auditoría técnica detallada (AUDIT.md)
@@ -51,38 +54,35 @@ agencialquimia/
 | **Iconografía** | Lucide React | v0.474.0 |
 | **Integración IA** | Webhook n8n vía API Proxy | Parametrizado vía `process.env.N8N_WEBHOOK_URL` |
 | **Base de Datos / BaaS** | Supabase JS Client | `@supabase/supabase-js` v2.48.1 |
-| **Tipografía** | Google Fonts via `next/font` | *Space Grotesk* (Titulares), *Inter* (Cuerpo) |
+| **Tipografía** | Google Fonts via `next/font` | *Space Grotesk* & *Inter* (Precarga WPO habilitada) |
 
 ---
 
-## 3. Sistema de Diseño Visual (Dark Charcoal Theme)
-
-El diseño visual sigue la estética **Dark Charcoal Premium**:
+## 3. Sistema de Diseño Visual & WPO (Dark Charcoal Theme)
 
 * **Fondo Principal:** `#0b0d10` (negro-grisáceo carbón profundo) con entramado radial esmeralda (`rgba(16, 185, 129, 0.12)`).
 * **Tarjetas y Módulos:** `#161a22` (`glass-card-dark`) con desenfoque de fondo (`backdrop-blur`) y bordes de cristal (`rgba(255, 255, 255, 0.08)`).
 * **Acentos de Marca Neón:** `#10b981` (verde esmeralda) y `#34d399` (verde neón brillante).
-* **Textos:** `#ffffff` en encabezados y `#9ca3af` / `#f3f4f6` en textos descriptivos.
-* **Barra de Navegación (`Navbar.tsx`):** Glassmorphism fijo con botón de enlace al **Panel Admin** (`/admin`) y botón CTA **Chat IA 24/7**.
+* **Optimización WPO (Zero FOIT):** Pila de fuentes del sistema (`system-ui`, `-apple-system`, `Roboto`, `sans-serif`) como fallback directo mientras carga la fuente `.woff2` en paralelo.
 
 ---
 
-## 4. Soluciones de Seguridad & Auditoría Resueltas
+## 4. Soluciones de Auditoría & WPO Resueltas
 
-1. **Proxy Backend Seguro para IA (`/api/chat`):**
+1. **Compresión SWC y Minificación de JS:**
+   - Creado [next.config.mjs](file:///c:/Proyectos/agencialquimia/next.config.mjs) habilitando compresión global y limpieza de `console.log` en producción.
+2. **Motores Dinámicos de SEO Nativo:**
+   - Creado [app/robots.ts](file:///c:/Proyectos/agencialquimia/app/robots.ts) para generar `/robots.txt` (eliminando errores 404).
+   - Creado [app/sitemap.ts](file:///c:/Proyectos/agencialquimia/app/sitemap.ts) para generar `/sitemap.xml`.
+3. **Eliminación de la Cadena Crítica LCP Bloqueante:**
+   - Habilitado `preload: true` en `next/font/google` ([app/layout.tsx](file:///c:/Proyectos/agencialquimia/app/layout.tsx)).
+   - Inyectadas etiquetas `preconnect` a Google Fonts y `dns-prefetch` al servidor de n8n.
+4. **Proxy Backend Seguro para IA (`/api/chat`):**
    - Parametrizado con `process.env.N8N_WEBHOOK_URL`.
-   - Elimina la inyección de prompts en el navegador cliente.
-   - Aplica un timeout de 8 segundos y ofrece botones de resiliencia CRO hacia WhatsApp en caso de fallo.
-2. **Acceso a Lectores de Pantalla (`aria-live="polite"`):**
-   - El widget [ChatWidget.tsx](file:///c:/Proyectos/agencialquimia/components/ChatWidget.tsx) incluye regiones vivas ARIA y control por teclado (`Escape`).
-3. **Páginas Legales Nativas:**
-   - Creados los componentes `/aviso-legal` y `/politica-de-privacidad` en Next.js, eliminando errores 404 en el footer.
-4. **Estructura de Recursos Estáticos (`public/`):**
-   - Creado el directorio `public/assets/`, `public/favicon.ico` y `public/favicon.svg` para servir imágenenes e iconos nativamente sin roturas.
-5. **SEO Local Auténtico:**
-   - Corrección del teléfono falso en Schema.org `LocalBusiness` ([components/JsonLd.tsx](file:///c:/Proyectos/agencialquimia/components/JsonLd.tsx)) asignando `+34604051111`.
-6. **Limpieza de Código Huérfano:**
-   - Purga completa de `live_site.html`, `dashboard/`, `_astro/`, `js/js/`, `css/css/`, `admin/` legado e `index.html` estático.
+   - Elimina la inyección de prompts en el navegador cliente y aplica timeout de 8s con resiliencia CRO a WhatsApp.
+5. **Páginas Legales Nativas & Assets Estáticos:**
+   - Componentes `/aviso-legal` y `/politica-de-privacidad` en Next.js.
+   - Recursos servidos nativamente desde la carpeta `public/`.
 
 ---
 
@@ -103,4 +103,6 @@ El diseño visual sigue la estética **Dark Charcoal Premium**:
 | **Julio 2026** | Migración completa a Next.js 15, React 19, TS y Tailwind v4 (5 Fases). | ✅ `npx tsc --noEmit`: 0 Errores |
 | **Julio 2026** | Aplicación del Tema Negro-Grisáceo (`#0b0d10`) y botón `/admin` en `Navbar`. | ✅ `npm run build`: 2.6s Éxito |
 | **Julio 2026** | Creación de `MEMORY/memory-bank.md` para persistencia a largo plazo. | ✅ Registrado |
-| **Julio 2026** | Ejecución de la Fase 5: Estructuración `/public`, páginas legales y `.env.local`. | ✅ 8/8 páginas compiladas en 2.5s |
+| **Julio 2026** | Ejecución de la Fase 5: Estructuración `/public`, páginas legales y `.env.local`. | ✅ 8/8 páginas compiladas |
+| **Julio 2026** | Optimización WPO LCP: Precarga WOFF2, `preconnect` e inyección fallback Zero FOIT. | ✅ 8/8 páginas en 3.0s |
+| **Julio 2026** | Creación de `next.config.mjs`, `app/robots.ts` y `app/sitemap.ts` nativos. | ✅ 10/10 rutas en 5.0s |
