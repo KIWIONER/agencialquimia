@@ -5,10 +5,8 @@
  * Descripción:
  *  Sección de catálogo de servicios e ingeniería de automatización en Tema Negro-Grisáceo.
  * 
- * Estética Visual:
- *  1. Módulos de Cristal Negro-Grisáceo: Tarjetas en `glass-card-dark` (`#161a22`).
- *  2. Listado de Beneficios con Iconos Verde Neón.
- *  3. Banner Infográfico del Núcleo Operativo: Métricas auditadas sobre contenedor carbón.
+ * Accesibilidad & Cumplimiento WCAG 2.1 AA:
+ *  1. Ratio de Contraste > 5.5:1 en todos los textos explicativos e infografía.
  * ==============================================================================
  */
 
@@ -26,7 +24,7 @@ export default function Services() {
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white">
             Ingeniería que genera <span className="text-emerald-400">resultados inmediatos</span>
           </h2>
-          <p className="text-gray-300 text-lg leading-relaxed">
+          <p className="text-gray-200 text-lg leading-relaxed font-normal">
             Módulos funcionales de alto rendimiento listos para integrarse en tu operación con precisión milimétrica y escalabilidad total.
           </p>
         </div>
@@ -45,11 +43,11 @@ export default function Services() {
                 </span>
               </div>
               <h3 className="text-2xl font-bold text-white">Centralita WhatsApp IA</h3>
-              <p className="text-gray-300 leading-relaxed text-sm">
+              <p className="text-gray-200 leading-relaxed text-sm">
                 Interacción nativa desde tu número corporativo. Resuelve consultas técnicas, gestiona interesados y coordina citas con lenguaje natural.
               </p>
             </div>
-            <ul className="mt-8 pt-6 border-t border-white/10 space-y-3 text-sm text-gray-200 font-medium">
+            <ul className="mt-8 pt-6 border-t border-white/10 space-y-3 text-sm text-gray-100 font-medium">
               <li className="flex items-center gap-3">
                 <Check className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span>Conversación Experta y Fluida</span>
@@ -72,11 +70,11 @@ export default function Services() {
                 <FileText className="w-7 h-7" />
               </div>
               <h3 className="text-2xl font-bold text-white">Gestión de Documentos</h3>
-              <p className="text-gray-300 leading-relaxed text-sm">
+              <p className="text-gray-200 leading-relaxed text-sm">
                 Procesamiento inteligente de registros oficiales. Extracción automatizada de datos en Notas Simples y Albaranes para transformar información compleja en activos operativos.
               </p>
             </div>
-            <ul className="mt-8 pt-6 border-t border-white/10 space-y-3 text-sm text-gray-200 font-medium">
+            <ul className="mt-8 pt-6 border-t border-white/10 space-y-3 text-sm text-gray-100 font-medium">
               <li className="flex items-center gap-3">
                 <Check className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span>Eliminación de errores de carga</span>
@@ -99,11 +97,11 @@ export default function Services() {
                 <Cpu className="w-7 h-7" />
               </div>
               <h3 className="text-2xl font-bold text-white">Integración Total de Sistemas</h3>
-              <p className="text-gray-300 leading-relaxed text-sm">
+              <p className="text-gray-200 leading-relaxed text-sm">
                 Conectamos tu web, WhatsApp, agenda, inventario y CRM en un único ecosistema sincronizado. Lo que pasa en un sitio se actualiza en todos automáticamente.
               </p>
             </div>
-            <ul className="mt-8 pt-6 border-t border-white/10 space-y-3 text-sm text-gray-200 font-medium">
+            <ul className="mt-8 pt-6 border-t border-white/10 space-y-3 text-sm text-gray-100 font-medium">
               <li className="flex items-center gap-3">
                 <Check className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span>Flujos operativos sincronizados</span>
@@ -127,7 +125,7 @@ export default function Services() {
               <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
                 Núcleo Operativo Alquimia
               </h3>
-              <p className="text-gray-400 text-sm max-w-2xl mx-auto">
+              <p className="text-gray-200 text-sm max-w-2xl mx-auto font-medium">
                 Métricas de rendimiento auditadas en tiempo real. Infraestructura optimizada para la mínima latencia.
               </p>
             </div>

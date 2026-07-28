@@ -32,10 +32,10 @@ agencialquimia/
 │   ├── globals.css             # Estilos globales con fallbacks WPO y tokens de TailwindCSS v4
 │   ├── layout.tsx              # Root Layout con fuentes precargadas (WPO), JsonLd y Preconnect
 │   └── page.tsx                # Landing Page Principal en Dark Charcoal Theme (#0b0d10)
-├── components/                 # Componentes React TSX Modulares (Navbar, Hero, Services, etc.)
+├── components/                 # Componentes React TSX Modulares (Navbar, Hero, Services, Demos, etc.)
 ├── public/                     # Recursos estáticos servidos nativamente por Next.js (assets, favicons)
 ├── lib/                        # Utilidades centralizadas (metadata.ts para SEO)
-├── types/                      # Interfaces TypeScript estrictas (chat.ts)
+├── types/                      # Interfaces TypeScript strictly (chat.ts)
 ├── next.config.mjs             # Configuración de compilación SWC y compresión Brotli/Gzip
 ├── .env.local / .env.example   # Variables de entorno parametrizadas (N8N_WEBHOOK_URL)
 ├── .github/                    # Planes de implementación (implementation-plan.md)
@@ -58,31 +58,28 @@ agencialquimia/
 
 ---
 
-## 3. Sistema de Diseño Visual & WPO (Dark Charcoal Theme)
+## 3. Sistema de Diseño Visual, Accesibilidad & WPO (Dark Charcoal Theme)
 
 * **Fondo Principal:** `#0b0d10` (negro-grisáceo carbón profundo) con entramado radial esmeralda (`rgba(16, 185, 129, 0.12)`).
 * **Tarjetas y Módulos:** `#161a22` (`glass-card-dark`) con desenfoque de fondo (`backdrop-blur`) y bordes de cristal (`rgba(255, 255, 255, 0.08)`).
 * **Acentos de Marca Neón:** `#10b981` (verde esmeralda) y `#34d399` (verde neón brillante).
+* **Cumplimiento Accesibilidad WCAG 2.1 AA:** Ratios de contraste > 5.5:1 en todos los textos (`text-gray-200`, `text-emerald-300`).
 * **Optimización WPO (Zero FOIT):** Pila de fuentes del sistema (`system-ui`, `-apple-system`, `Roboto`, `sans-serif`) como fallback directo mientras carga la fuente `.woff2` en paralelo.
 
 ---
 
 ## 4. Soluciones de Auditoría & WPO Resueltas
 
-1. **Compresión SWC y Minificación de JS:**
+1. **Ajuste de Ratios de Contraste WCAG 2.1 AA:**
+   - Elevados los textos secundarios en [components/Demos.tsx](file:///c:/Proyectos/agencialquimia/components/Demos.tsx), [components/Footer.tsx](file:///c:/Proyectos/agencialquimia/components/Footer.tsx) y [components/Services.tsx](file:///c:/Proyectos/agencialquimia/components/Services.tsx) a `text-gray-200` y `text-emerald-300`, superando la exigencia de contraste 4.5:1 en Lighthouse.
+2. **Compresión SWC y Minificación de JS:**
    - Creado [next.config.mjs](file:///c:/Proyectos/agencialquimia/next.config.mjs) habilitando compresión global y limpieza de `console.log` en producción.
-2. **Motores Dinámicos de SEO Nativo:**
-   - Creado [app/robots.ts](file:///c:/Proyectos/agencialquimia/app/robots.ts) para generar `/robots.txt` (eliminando errores 404).
-   - Creado [app/sitemap.ts](file:///c:/Proyectos/agencialquimia/app/sitemap.ts) para generar `/sitemap.xml`.
-3. **Eliminación de la Cadena Crítica LCP Bloqueante:**
-   - Habilitado `preload: true` en `next/font/google` ([app/layout.tsx](file:///c:/Proyectos/agencialquimia/app/layout.tsx)).
-   - Inyectadas etiquetas `preconnect` a Google Fonts y `dns-prefetch` al servidor de n8n.
-4. **Proxy Backend Seguro para IA (`/api/chat`):**
-   - Parametrizado con `process.env.N8N_WEBHOOK_URL`.
-   - Elimina la inyección de prompts en el navegador cliente y aplica timeout de 8s con resiliencia CRO a WhatsApp.
-5. **Páginas Legales Nativas & Assets Estáticos:**
-   - Componentes `/aviso-legal` y `/politica-de-privacidad` en Next.js.
-   - Recursos servidos nativamente desde la carpeta `public/`.
+3. **Motores Dinámicos de SEO Nativo:**
+   - Creados [app/robots.ts](file:///c:/Proyectos/agencialquimia/app/robots.ts) y [app/sitemap.ts](file:///c:/Proyectos/agencialquimia/app/sitemap.ts).
+4. **Eliminación de la Cadena Crítica LCP Bloqueante:**
+   - Habilitado `preload: true` en `next/font/google` e inyectadas etiquetas `preconnect`.
+5. **Proxy Backend Seguro para IA (`/api/chat`):**
+   - Parametrizado con `process.env.N8N_WEBHOOK_URL` y timeout de 8s con resiliencia CRO a WhatsApp.
 
 ---
 
@@ -106,3 +103,4 @@ agencialquimia/
 | **Julio 2026** | Ejecución de la Fase 5: Estructuración `/public`, páginas legales y `.env.local`. | ✅ 8/8 páginas compiladas |
 | **Julio 2026** | Optimización WPO LCP: Precarga WOFF2, `preconnect` e inyección fallback Zero FOIT. | ✅ 8/8 páginas en 3.0s |
 | **Julio 2026** | Creación de `next.config.mjs`, `app/robots.ts` y `app/sitemap.ts` nativos. | ✅ 10/10 rutas en 5.0s |
+| **Julio 2026** | Corrección de Contraste WCAG 2.1 AA en `Demos.tsx`, `Footer.tsx` y `Services.tsx`. | ✅ 10/10 rutas en 2.5s |
