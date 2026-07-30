@@ -43,8 +43,19 @@ export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'trainer' | 'settings'>('dashboard');
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex font-sans">
-      {/* Sidebar Lateral de Navegación del Panel Admin */}
+    <>
+      {/* Mensaje de bloqueo para versiones móviles */}
+      <div className="flex md:hidden min-h-screen bg-slate-950 flex-col items-center justify-center p-6 text-center space-y-4">
+        <Shield className="w-16 h-16 text-emerald-500" />
+        <h2 className="text-2xl font-bold text-white">Acceso Restringido</h2>
+        <p className="text-slate-400 text-sm max-w-sm">
+          Por motivos de seguridad y usabilidad, el panel de administración solo está disponible en dispositivos de escritorio y pantallas grandes.
+        </p>
+      </div>
+
+      {/* Panel Administrativo completo (visible solo a partir de md) */}
+      <div className="hidden md:flex min-h-screen bg-slate-950 text-slate-100 font-sans w-full">
+        {/* Sidebar Lateral de Navegación del Panel Admin */}
       <aside className="w-64 bg-slate-900 border-r border-slate-800 p-6 flex flex-col justify-between shrink-0">
         <div className="space-y-8">
           {/* Logo Corporativo del Admin */}
@@ -204,6 +215,7 @@ export default function AdminDashboardPage() {
           </div>
         </section>
       </main>
-    </div>
+      </div>
+    </>
   );
 }

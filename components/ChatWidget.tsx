@@ -154,21 +154,22 @@ export default function ChatWidget() {
   return (
     <>
       {/* Botón Flotante Disparador del Chat (Bottom Right) */}
-      <button
-        ref={triggerBtnRef}
-        type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="fixed bottom-6 right-6 z-50 p-4 rounded-full bg-emerald-950 hover:bg-emerald-900 text-emerald-400 border-2 border-emerald-500 shadow-2xl transition-all duration-300 hover:scale-105 focus:outline-none flex items-center justify-center cursor-pointer"
-        aria-label={isOpen ? 'Cerrar chat de asistente IA' : 'Abrir chat de asistente IA 24/7'}
-        aria-expanded={isOpen}
-      >
-        {isOpen ? <X className="w-6 h-6" /> : <Bot className="w-6 h-6 animate-pulse" />}
-      </button>
+      {!isOpen && (
+        <button
+          ref={triggerBtnRef}
+          type="button"
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-6 right-6 z-50 p-4 rounded-full bg-emerald-950 hover:bg-emerald-900 text-emerald-400 border-2 border-emerald-500 shadow-2xl transition-all duration-300 hover:scale-105 focus:outline-none flex items-center justify-center cursor-pointer"
+          aria-label="Abrir chat de asistente IA 24/7"
+        >
+          <Bot className="w-6 h-6 animate-pulse" />
+        </button>
+      )}
 
       {/* Ventana Modal del Chat Conversacional */}
       {isOpen && (
         <div
-          className="fixed bottom-24 right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-[400px] h-[540px] max-h-[80vh] z-50 bg-emerald-950 border border-emerald-500/30 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95"
+          className="fixed inset-0 sm:inset-auto sm:bottom-24 sm:right-6 w-full sm:w-[400px] h-[100dvh] sm:h-[540px] sm:max-h-[80vh] z-50 bg-emerald-950 sm:border-2 border-emerald-500/30 sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in sm:zoom-in-95"
           role="dialog"
           aria-label="Ventana de Chat de IA"
         >
