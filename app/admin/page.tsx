@@ -21,7 +21,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Bot, TrendingUp, Shield, Settings, LayoutDashboard, Database, UserCheck, FolderGit2, LogOut, Bell } from 'lucide-react';
+import Link from 'next/link';
+import { Users, Bot, TrendingUp, Shield, Settings, LayoutDashboard, Database, UserCheck, FolderGit2, LogOut, Bell, Send, ExternalLink, Workflow } from 'lucide-react';
 import { DataTable } from '../../components/admin/DataTable';
 
 interface LeadItem {
@@ -38,6 +39,15 @@ export default function AdminDashboardPage() {
   const [mounted, setMounted] = useState(false);
   const [notifications, setNotifications] = useState(true);
 
+  // Estados para el Chat IA (OpenClaw)
+  const [chatInput, setChatInput] = useState('');
+  
+  type ChatMessage = { role: 'user' | 'ai', text: string };
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    { role: 'ai', text: 'Hola, soy tu asistente OpenClaw. ¿En qué te puedo ayudar hoy con el entrenamiento de los agentes?' }
+  ]);
+  const [chatLoading, setChatLoading] = useState(false);
+
   // Estado local para los prospectos/leads recibidos
   const [leads] = useState<LeadItem[]>([
     { id: '1', nombre: 'Carlos Ruiz', sector: 'Retail', contacto: 'carlos@tienda.es', estado: 'Pendiente', fecha: 'Hoy, 10:30' },
@@ -46,7 +56,7 @@ export default function AdminDashboardPage() {
     { id: '4', nombre: 'Elena Blanco', sector: 'Salud', contacto: '+34 604 555 888', estado: 'Enviado a IA', fecha: 'Hace 2 horas' },
   ]);
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'supabase' | 'trainer' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'supabase' | 'n8n' | 'trainer' | 'settings'>('dashboard');
 
   useEffect(() => {
     setMounted(true);
@@ -60,6 +70,22 @@ export default function AdminDashboardPage() {
     } catch (e) {
       console.error('Logout failed', e);
     }
+  };
+
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const newUserMsg: ChatMessage = { role: 'user', text: chatInput };
+    setChatMessages((prev: ChatMessage[]) => [...prev, newUserMsg]);
+    setChatInput('');
+    setChatLoading(true);
+
+    // Simular respuesta de OpenClaw (aquí podrías conectar a /api/chat)
+    setTimeout(() => {
+      setChatMessages((prev: ChatMessage[]) => [...prev, { role: 'ai', text: 'Procesando tu petición a través del motor OpenClaw...' }]);
+      setChatLoading(false);
+    }, 1500);
   };
 
   if (!mounted) {
@@ -134,6 +160,18 @@ export default function AdminDashboardPage() {
             </button>
             <button
               type="button"
+              onClick={() => setActiveTab('n8n')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
+                activeTab === 'n8n'
+                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+            >
+              <Workflow className="w-5 h-5" />
+              <span>Workflows n8n</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTab('trainer')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
                 activeTab === 'trainer'
@@ -156,6 +194,16 @@ export default function AdminDashboardPage() {
               <Settings className="w-5 h-5" />
               <span>Configuración</span>
             </button>
+            
+            <div className="pt-4 mt-2 border-t border-slate-800">
+              <Link
+                href="/"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+              >
+                <ExternalLink className="w-5 h-5" />
+                <span>Volver a la Web</span>
+              </Link>
+            </div>
           </nav>
         </div>
 
@@ -172,12 +220,18 @@ export default function AdminDashboardPage() {
         <header className="flex items-center justify-between pb-6 border-b border-slate-800">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-white">
-              {activeTab === 'supabase' ? 'Tablas de Supabase' : 'Dashboard General'}
+              {activeTab === 'supabase'
+                ? 'Tablas de Supabase'
+                : activeTab === 'n8n'
+                  ? 'Workflows n8n'
+                  : 'Dashboard General'}
             </h1>
             <p className="text-slate-400 text-sm mt-1">
               {activeTab === 'supabase'
                 ? 'Explorador y Gestión de carpetas / tablas de la Base de Datos'
-                : 'Control Center y Monitoreo de Leads en Tiempo Real'}
+                : activeTab === 'n8n'
+                  ? 'Acceso en tiempo real al cerebro de automatización (cerebro.agencialquimia.com)'
+                  : 'Control Center y Monitoreo de Leads en Tiempo Real'}
             </p>
           </div>
           <div className="px-4 py-2 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-400 text-xs font-semibold flex items-center gap-2">
@@ -187,7 +241,7 @@ export default function AdminDashboardPage() {
         </header>
 
         {/* Grid de Métricas Principales */}
-        {activeTab !== 'supabase' && (
+        {activeTab !== 'supabase' && activeTab !== 'n8n' && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
               <div className="flex items-center justify-between text-slate-400">
@@ -218,6 +272,82 @@ export default function AdminDashboardPage() {
         {/* Renderizado condicional según la pestaña seleccionada */}
         {activeTab === 'supabase' ? (
           <DataTable initialTable="leads" />
+        ) : activeTab === 'n8n' ? (
+          <section className="h-[78vh] flex flex-col rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-950">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Workflow className="w-5 h-5 text-emerald-400" />
+                <span>n8n — Cerebro de automatización</span>
+              </h2>
+              <a
+                href="https://cerebro.agencialquimia.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-500 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Abrir en pestaña nueva
+              </a>
+            </div>
+            <iframe
+              src="https://cerebro.agencialquimia.com"
+              className="w-full flex-1 border-0 bg-white"
+              title="n8n — Workflows en tiempo real"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            />
+          </section>
+        ) : activeTab === 'trainer' ? (
+          <section className="h-[70vh] flex flex-col rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-950">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Bot className="w-5 h-5 text-emerald-400" />
+                <span>OpenClaw IA Trainer</span>
+              </h2>
+              <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                Online
+              </span>
+            </div>
+            
+            <div className="flex-1 p-6 overflow-y-auto space-y-4 flex flex-col">
+              {chatMessages.map((msg: ChatMessage, i: number) => (
+                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[80%] rounded-2xl p-4 ${msg.role === 'user' ? 'bg-emerald-600 text-white rounded-br-none' : 'bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700'}`}>
+                    <p className="text-sm">{msg.text}</p>
+                  </div>
+                </div>
+              ))}
+              {chatLoading && (
+                <div className="flex justify-start">
+                  <div className="max-w-[80%] rounded-2xl p-4 bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700">
+                    <div className="flex gap-1.5 items-center px-2 py-1">
+                      <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce"></span>
+                      <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
+                      <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 bg-slate-950 border-t border-slate-800">
+              <form onSubmit={handleSendMessage} className="flex gap-3">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Escribe un mensaje para OpenClaw..."
+                  className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+                />
+                <button
+                  type="submit"
+                  disabled={!chatInput.trim() || chatLoading}
+                  className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-medium transition-colors flex items-center justify-center"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              </form>
+            </div>
+          </section>
         ) : activeTab === 'settings' ? (
           <section className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
             <div className="flex items-center justify-between border-b border-slate-800 pb-4">
