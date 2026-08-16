@@ -29,7 +29,7 @@ Este documento constituye el **Banco de Memoria a Largo Plazo** del proyecto **A
 * **Proxy reverso:** nginx en los puertos **80/443**.
 * **Cache de estáticos:** `nginx.conf` del repo — caché inmutable de 1 año (`max-age=31536000, immutable`) para `/assets`, `/images`, `/fonts` y `/videos`.
 * **Gestión de procesos:** sin PM2 ni systemd dedicado; el proceso Next se lanza con `next start`.
-* **Infraestructura dockerizada en el VPS:** n8n (puerto **5678**, expuesto vía `https://cerebro.agencialquimia.com`), Supabase/PostgreSQL (**5432**), Kong/OpenResty (**8000/8080**), proxy 80/443 vía Docker.
+* **Infraestructura dockerizada en el VPS:** n8n (puerto **5678**, expuesto vía `https://cerebro.agencialquimia.com`), PostgreSQL (**5432**), Kong/OpenResty (**8000/8080**), proxy 80/443 vía Docker.
 
 ### Repositorio y Flujo de Trabajo
 
@@ -81,7 +81,7 @@ El proyecto se encuentra 100% migrado, corregido y unificado bajo un único ecos
 | **Sistema de Estilos** | TailwindCSS v4 + PostCSS | v4.0.0 (`@tailwindcss/postcss`) |
 | **Iconografía** | Lucide React | v0.474.0 |
 | **Integración IA** | Webhook n8n vía API Proxy | Parametrizado vía `process.env.N8N_WEBHOOK_URL` |
-| **Base de Datos / BaaS** | Supabase JS Client | `@supabase/supabase-js` v2.48.1 |
+| **Base de Datos / BaaS** | — | Sin BaaS en uso (Supabase retirado en agosto 2026: dependencia sin uso) |
 | **Tipografía** | Google Fonts via `next/font` | *Space Grotesk* & *Inter* (Precarga WPO habilitada) |
 
 ---

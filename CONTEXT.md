@@ -40,7 +40,7 @@ agencialquimia/
 | **Estilos & UI** | TailwindCSS v4, Lucide Icons | `app/globals.css`, `components/` |
 | **Panel Admin** | Sub-ruta nativa Next.js | `app/admin/page.tsx` |
 | **Agente Comercial IA** | Webhook n8n vía Proxy API Route | `app/api/chat/route.ts` |
-| **Base de Datos / BaaS** | Supabase Client SDK | `@supabase/supabase-js` |
+| **Base de Datos / BaaS** | — | Sin BaaS actualmente (Supabase retirado: dependencia sin uso) |
 | **Optimización / WPO** | `next/font`, `next/metadata`, `next/image` | Fuentes corporativas (*Space Grotesk*, *Inter*) & SEO Server Side |
 
 ---
@@ -56,7 +56,7 @@ c:/Proyectos/agencialquimia/
 │   ├── layout.tsx              # Root Layout con fuentes e infra del sitio
 │   └── page.tsx                # Landing Page principal
 ├── components/                 # Componentes React TSX reutilizables (Navbar, Hero, ChatWidget...)
-├── lib/                        # Utilidades y configuración (metadata.ts, supabase.ts...)
+├── lib/                        # Utilidades y configuración (metadata.ts...)
 ├── types/                      # Contratos e interfaces de TypeScript (chat.ts)
 ├── public/                     # Assets estáticos (imágenes, logos, favicon, videos)
 ├── audit/                      # Informes de auditoría técnica (AUDIT.md)
