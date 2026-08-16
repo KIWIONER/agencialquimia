@@ -29,6 +29,12 @@ Instrucciones detalladas, pasos, ejemplos y comandos.
 - La `description` debe indicar **cuándo aplica** (ej.: "Usar al modificar el chat widget o el proxy /api/chat").
 - Mantener skills pequeñas y específicas del proyecto; lo genérico vive en `ai-rules.md`.
 
+## Skills del proyecto
+
+| Skill | Descripción |
+| :--- | :--- |
+| `supabase-admin-tables` | Renderizar tablas de Supabase en el panel admin (/admin) — descubrimiento vía OpenAPI, fetch server-side y tabla genérica. Incluye ejemplos (`examples/`). |
+
 ## Candidatas sugeridas
 
 - `chat-widget` — modificar ChatWidget.tsx y el proxy n8n (`/api/chat`).
