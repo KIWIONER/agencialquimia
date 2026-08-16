@@ -22,10 +22,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Users, Bot, TrendingUp, Shield, Settings, LayoutDashboard, Database, UserCheck, FolderGit2, LogOut, Bell, Send, ExternalLink, Workflow } from 'lucide-react';
+import { Users, Bot, TrendingUp, Shield, Settings, LayoutDashboard, Database, UserCheck, FolderGit2, LogOut, Bell, Send, ExternalLink, Workflow, MessageSquare } from 'lucide-react';
 import { DataTable } from '../../components/admin/DataTable';
 import LeadPipeline from '../../components/admin/LeadPipeline';
 import MaxChat from '../../components/admin/MaxChat';
+import ClientInbox from '../../components/admin/ClientInbox';
 import { N8nWorkflows } from '../../components/admin/N8nWorkflows';
 
 interface LeadItem {
@@ -60,7 +61,7 @@ export default function AdminDashboardPage() {
     { id: '4', nombre: 'Elena Blanco', sector: 'Salud', contacto: '+34 604 555 888', estado: 'Enviado a IA', fecha: 'Hace 2 horas' },
   ]);
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'supabase' | 'n8n' | 'trainer' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'supabase' | 'n8n' | 'trainer' | 'inbox' | 'settings'>('dashboard');
   const [prospectosView, setProspectosView] = useState<'pipeline' | 'tabla'>('pipeline');
 
   useEffect(() => {
@@ -203,6 +204,18 @@ export default function AdminDashboardPage() {
             </button>
             <button
               type="button"
+              onClick={() => setActiveTab('inbox')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
+                activeTab === 'inbox'
+                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+            >
+              <MessageSquare className="w-5 h-5" />
+              <span>Clientes (Inbox)</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTab('trainer')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
                 activeTab === 'trainer'
@@ -305,6 +318,8 @@ export default function AdminDashboardPage() {
           <DataTable initialTable="leads" />
         ) : activeTab === 'n8n' ? (
           <N8nWorkflows />
+        ) : activeTab === 'inbox' ? (
+          <ClientInbox />
         ) : activeTab === 'trainer' ? (
           <MaxChat />
         ) : activeTab === 'settings' ? (
