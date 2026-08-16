@@ -29,6 +29,7 @@ interface N8nState {
 }
 
 interface DiagramState {
+  id: string;
   name: string;
   nodes: Array<{ id: string; name: string; type: string; position?: [number, number] }>;
   connections: Record<string, unknown>;
@@ -71,7 +72,7 @@ export function N8nWorkflows() {
       const res = await fetch(`/api/admin/n8n/${encodeURIComponent(id)}`, { cache: 'no-store' });
       const json = await res.json();
       if (json.success) {
-        setDiagram({ name: json.name ?? name, nodes: json.nodes ?? [], connections: json.connections ?? {} });
+        setDiagram({ id: json.id ?? id, name: json.name ?? name, nodes: json.nodes ?? [], connections: json.connections ?? {} });
       } else {
         setState((prev) => ({ ...prev, error: json.error ?? 'No se pudo cargar el workflow' }));
       }
@@ -121,6 +122,7 @@ export function N8nWorkflows() {
       <div className="flex-1 overflow-y-auto p-4">
         {diagram ? (
           <WorkflowDiagram
+            id={diagram.id}
             name={diagram.name}
             nodes={diagram.nodes}
             connections={diagram.connections as WorkflowDiagramProps['connections']}

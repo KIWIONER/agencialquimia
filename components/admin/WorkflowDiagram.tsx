@@ -14,8 +14,8 @@
 
 'use client';
 
-import { useRef, useState } from 'react';
-import { ArrowLeft, Bot, Webhook, Zap, BrainCircuit, GitBranch, MessageSquare, Database, Move } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, Bot, Webhook, Zap, BrainCircuit, GitBranch, MessageSquare, Database, Move, Save, RotateCcw, RefreshCw } from 'lucide-react';
 
 interface NodeItem {
   id: string;
@@ -31,6 +31,7 @@ interface ConnectionItem {
 }
 
 export interface WorkflowDiagramProps {
+  id: string;
   name: string;
   nodes: NodeItem[];
   connections: ConnectionItem;
@@ -80,13 +81,65 @@ function NodeIcon({ kind }: { kind: string }) {
 const NODE_W = 190;
 const NODE_H = 52;
 
-export function WorkflowDiagram({ name, nodes, connections, onBack }: WorkflowDiagramProps) {
+export function WorkflowDiagram({ id, name, nodes, connections, onBack }: WorkflowDiagramProps) {
   // Posiciones locales (editables con drag); se inicializan desde n8n
-  const [nodePos, setNodePos] = useState<Record<string, [number, number]>>(() =>
-    Object.fromEntries(nodes.map((n) => [n.id, n.position ?? [0, 0]]))
+  const originalPos: Record<string, [number, number]> = Object.fromEntries(
+    nodes.map((n) => [n.id, (n.position ?? [0, 0]) as [number, number]])
   );
+  const [nodePos, setNodePos] = useState<Record<string, [number, number]>>(() => originalPos);
+  const [baseline, setBaseline] = useState<Record<string, [number, number]>>(originalPos);
   const [dragging, setDragging] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [view, setView] = useState({ w: 860, h: 500 });
+
+  // Medir el contenedor para ajustar la escala y que todo quepa sin scroll
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const measure = () => setView({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const dragRef = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
+
+  // ¿Hay cambios sin guardar respecto a la última línea base?
+  const dirty = nodes.some((n) => {
+    const o = baseline[n.id];
+    const c = nodePos[n.id];
+    return !o || !c || o[0] !== c[0] || o[1] !== c[1];
+  });
+
+  const savePositions = async () => {
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      const res = await fetch(`/api/admin/n8n/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ positions: nodePos }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setSaveMsg(`Guardado en n8n ✓ (${json.saved} nodos)`);
+        setBaseline(nodePos);
+      } else {
+        setSaveMsg(`Error: ${json.error ?? 'no se pudo guardar'}`);
+      }
+    } catch {
+      setSaveMsg('Error de red al guardar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const resetPositions = () => {
+    setNodePos(baseline);
+    setSaveMsg(null);
+  };
 
   if (nodes.length === 0) {
     return <p className="text-slate-400 text-sm p-4">Este workflow no tiene nodos.</p>;
@@ -102,6 +155,10 @@ export function WorkflowDiagram({ name, nodes, connections, onBack }: WorkflowDi
   const maxY = Math.max(...positions.map((p) => p[1]));
   const canvasW = Math.max(maxX - minX + NODE_W + PAD * 2, 600);
   const canvasH = Math.max(maxY - minY + NODE_H + PAD * 2, 420);
+
+  // Escala de ajuste: uniforme, mantiene las posiciones relativas 1:1 de n8n,
+  // y reduce el conjunto (tarjetas incluidas) para que quepa en el panel.
+  const fitScale = Math.min(1, (view.w - 16) / canvasW, (view.h - 16) / canvasH);
 
   const byName = new Map(nodes.map((n) => [n.name, n]));
 
@@ -160,10 +217,37 @@ export function WorkflowDiagram({ name, nodes, connections, onBack }: WorkflowDi
           <Move size={12} />
           Arrastra las tarjetas para moverlas
         </span>
+        <div className="flex items-center gap-2">
+          {saveMsg && (
+            <span className={`text-xs max-w-[220px] truncate ${saveMsg.startsWith('Guardado') ? 'text-emerald-400' : 'text-red-400'}`}>{saveMsg}</span>
+          )}
+          {dirty && (
+            <button
+              type="button"
+              onClick={resetPositions}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-sm font-medium hover:bg-slate-700 transition-colors"
+            >
+              <RotateCcw size={14} />
+              Restablecer
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => void savePositions()}
+            disabled={!dirty || saving}
+            className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+              dirty ? 'bg-emerald-600 text-white hover:bg-emerald-500' : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+            }`}
+          >
+            {saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+            Guardar
+          </button>
+        </div>
       </div>
 
-      <div className="relative flex-1 min-h-[420px] rounded-xl bg-slate-950/70 border border-slate-800 overflow-auto select-none">
-        <div className="relative" style={{ width: canvasW, height: canvasH }}>
+      <div ref={containerRef} className="relative flex-1 min-h-[420px] rounded-xl bg-slate-950/70 border border-slate-800 overflow-hidden select-none">
+        <div className="relative" style={{ width: canvasW * fitScale, height: canvasH * fitScale }}>
+          <div className="absolute top-0 left-0 origin-top-left" style={{ transform: `scale(${fitScale})`, width: canvasW, height: canvasH }}>
         {/* Líneas de conexión */}
         <svg className="absolute inset-0 pointer-events-none" width={canvasW} height={canvasH}>
           {edges.map(([src, tgt], i) => {
@@ -214,6 +298,7 @@ export function WorkflowDiagram({ name, nodes, connections, onBack }: WorkflowDi
             </div>
           );
         })}
+          </div>
         </div>
       </div>
     </div>
