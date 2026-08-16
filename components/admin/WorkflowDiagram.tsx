@@ -15,7 +15,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { ArrowLeft, Workflow, Bot, Webhook, Zap, BrainCircuit, GitBranch, MessageSquare, Database, Move } from 'lucide-react';
+import { ArrowLeft, Bot, Webhook, Zap, BrainCircuit, GitBranch, MessageSquare, Database, Move } from 'lucide-react';
 
 interface NodeItem {
   id: string;
@@ -87,22 +87,21 @@ export function WorkflowDiagram({ name, nodes, connections, onBack }: WorkflowDi
   );
   const [dragging, setDragging] = useState<string | null>(null);
   const dragRef = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
-  const scaleRef = useRef(1);
 
   if (nodes.length === 0) {
     return <p className="text-slate-400 text-sm p-4">Este workflow no tiene nodos.</p>;
   }
 
-  // Escala para que quepan en el panel
+  // Replicación 1:1 de las posiciones originales de n8n (sin escalado).
+  // El lienzo se dimensiona según los límites del workflow y el contenedor hace scroll.
+  const PAD = 60;
   const positions = nodes.map((n) => nodePos[n.id] ?? [0, 0]);
   const minX = Math.min(...positions.map((p) => p[0]));
   const minY = Math.min(...positions.map((p) => p[1]));
   const maxX = Math.max(...positions.map((p) => p[0]));
   const maxY = Math.max(...positions.map((p) => p[1]));
-  const scaleX = 860 / Math.max(maxX - minX + 320, 400);
-  const scaleY = 520 / Math.max(maxY - minY + 200, 300);
-  const scale = Math.min(scaleX, scaleY, 1.4);
-  scaleRef.current = scale;
+  const canvasW = Math.max(maxX - minX + NODE_W + PAD * 2, 600);
+  const canvasH = Math.max(maxY - minY + NODE_H + PAD * 2, 420);
 
   const byName = new Map(nodes.map((n) => [n.name, n]));
 
@@ -118,10 +117,8 @@ export function WorkflowDiagram({ name, nodes, connections, onBack }: WorkflowDi
     }
   }
 
-  const scaled = (p: [number, number]): [number, number] => [
-    30 + (p[0] - minX) * scale,
-    40 + (p[1] - minY) * scale,
-  ];
+  // Traslación: las coordenadas originales (pueden ser negativas) se desplazan al lienzo
+  const toCanvas = (p: [number, number]): [number, number] => [p[0] - minX + PAD, p[1] - minY + PAD];
 
   // --- Drag & drop ----------------------------------------------------------
   const onPointerDown = (e: React.PointerEvent, node: NodeItem) => {
@@ -135,8 +132,9 @@ export function WorkflowDiagram({ name, nodes, connections, onBack }: WorkflowDi
   const onPointerMove = (e: React.PointerEvent) => {
     const drag = dragRef.current;
     if (!drag) return;
-    const dx = (e.clientX - drag.startX) / scaleRef.current;
-    const dy = (e.clientY - drag.startY) / scaleRef.current;
+    // Escala 1:1 → el desplazamiento en píxeles equivale a unidades de lienzo
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
     setNodePos((prev) => ({ ...prev, [drag.id]: [drag.origX + dx, drag.origY + dy] }));
   };
 
@@ -165,14 +163,15 @@ export function WorkflowDiagram({ name, nodes, connections, onBack }: WorkflowDi
       </div>
 
       <div className="relative flex-1 min-h-[420px] rounded-xl bg-slate-950/70 border border-slate-800 overflow-auto select-none">
+        <div className="relative" style={{ width: canvasW, height: canvasH }}>
         {/* Líneas de conexión */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" width="100%" height="100%">
+        <svg className="absolute inset-0 pointer-events-none" width={canvasW} height={canvasH}>
           {edges.map(([src, tgt], i) => {
             const s = byName.get(src);
             const t = byName.get(tgt);
             if (!s || !t) return null;
-            const [x1, y1] = scaled(nodePos[s.id] ?? [0, 0]);
-            const [x2, y2] = scaled(nodePos[t.id] ?? [0, 0]);
+            const [x1, y1] = toCanvas(nodePos[s.id] ?? [0, 0]);
+            const [x2, y2] = toCanvas(nodePos[t.id] ?? [0, 0]);
             const sx = x1 + NODE_W;
             const sy = y1 + NODE_H / 2;
             const tx = x2;
@@ -191,7 +190,7 @@ export function WorkflowDiagram({ name, nodes, connections, onBack }: WorkflowDi
         {nodes.map((n) => {
           const kind = nodeKind(n.type);
           const style = kindStyles[kind];
-          const [x, y] = scaled(nodePos[n.id] ?? [0, 0]);
+          const [x, y] = toCanvas(nodePos[n.id] ?? [0, 0]);
           const isDragging = dragging === n.id;
           return (
             <div
@@ -215,6 +214,7 @@ export function WorkflowDiagram({ name, nodes, connections, onBack }: WorkflowDi
             </div>
           );
         })}
+        </div>
       </div>
     </div>
   );
