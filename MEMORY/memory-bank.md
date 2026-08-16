@@ -25,11 +25,11 @@ Este documento constituye el **Banco de Memoria a Largo Plazo** del proyecto **A
 ### Hosting y Ejecución en Producción
 
 * **Servidor:** VPS propio (dominio `agencialquimia.com`; subdominio del agente IA: `cerebro.agencialquimia.com`).
-* **Proceso web:** Next.js **v15.5.22** en producción con `next start` (servicio en segundo plano; visible en `ps` como `sh -c next start` → `next-server`).
-* **Proxy reverso:** nginx en los puertos **80/443**.
+* **Plataforma de despliegue:** **Coolify** (PaaS self-hosted en el VPS). Cada push a `main` dispara la construcción de una imagen Docker etiquetada con el **hash del commit** y el despliegue del contenedor (Next.js v15.5.22 con `next start` dentro del contenedor, cwd `/app`).
+* **Proxy reverso:** **Traefik** (`coolify-proxy`) en los puertos **80/443**.
 * **Cache de estáticos:** `nginx.conf` del repo — caché inmutable de 1 año (`max-age=31536000, immutable`) para `/assets`, `/images`, `/fonts` y `/videos`.
-* **Gestión de procesos:** sin PM2 ni systemd dedicado; el proceso Next se lanza con `next start`.
-* **Infraestructura dockerizada en el VPS:** n8n (puerto **5678**, expuesto vía `https://cerebro.agencialquimia.com`), PostgreSQL (**5432**), Kong/OpenResty (**8000/8080**), proxy 80/443 vía Docker.
+* **Supabase:** stack completo dockerizado en el VPS (auth, storage, kong, studio, postgrest...) aunque la web **no lo consume** (SDK retirado en agosto 2026).
+* **Otra infraestructura dockerizada:** n8n (puerto **5678**, expuesto vía `https://cerebro.agencialquimia.com`), PostgreSQL (**5432**).
 
 ### Repositorio y Flujo de Trabajo
 

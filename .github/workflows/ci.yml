@@ -1,0 +1,47 @@
+# ==============================================================================
+# Archivo: .github/workflows/ci.yml
+# ==============================================================================
+# Descripción:
+#  Validación continua (CI) para AgenciAlquimia: en cada push a `main` y en
+#  cada pull request se ejecutan typecheck, lint, tests y build de producción.
+#
+#  Nota: el DESPLIEGUE no se hace desde GitHub Actions. Coolify (PaaS
+#  self-hosted en el VPS) construye y despliega automáticamente la imagen
+#  Docker de la aplicación con cada push a `main`.
+# ==============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    name: Validación (typecheck · lint · tests · build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Typecheck (TypeScript estricto)
+        run: npx tsc --noEmit
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Tests (Vitest)
+        run: npm test
+
+      - name: Build de producción
+        run: npm run build
