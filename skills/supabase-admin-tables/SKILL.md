@@ -1,59 +1,85 @@
 ---
 name: supabase-admin-tables
-description: Renderizar en el panel admin (/admin) las tablas creadas en Supabase (self-hosted en el VPS). Usar para conectar el admin a datos reales, sustituir los leads mock o añadir vistas de tablas sin código específico.
+description: >-
+  Renderizar y conectar en vivo en el panel admin (/admin) las 11 tablas creadas en Supabase
+  (leads_agencialquimia, leads_hunter, chat_messages, n8n_chat_histories, etc.) mediante API Routes y DataTable.tsx.
 ---
 
 # Skill: supabase-admin-tables
 
 ## Cuándo usar esta skill
 
-- Conectar el panel de administración (`/admin`) a datos reales de Supabase.
-- Sustituir los leads mock de `app/admin/page.tsx` por los de una tabla real.
-- Añadir una vista genérica de cualquier tabla (leads, clientes, mensajes...) sin escribir código específico por tabla.
+- Conectar el panel de administración (`/admin`) a datos reales en vivo de Supabase (Cloud o self-hosted).
+- Listar y explorar cualquiera de las **11 tablas oficiales** del proyecto AgenciAlquimia mediante un menú desplegable interactivo.
+- Añadir nuevas vistas genéricas de tablas sin escribir código específico por tabla.
 
-## Contexto del proyecto (verificado)
+## Contexto del proyecto (Verificado)
 
-- **Panel admin:** `app/admin/page.tsx` — client component con sidebar y tabs (`dashboard | leads | trainer | settings`); los leads son un array mock hardcodeado; solo visible en desktop (bloqueo móvil).
-- **Supabase:** self-hosted en el VPS (docker, proyecto Coolify `jo0oosc8c0k088gg0kowokco`). Datos de conexión en `notes/supabase-vps.md` y en la skill `supabase-sql`.
-- **API:** PostgREST vía Kong. URL y anon key ya inyectadas por Coolify en el env del contenedor web:
-  - `PUBLIC_SUPABASE_URL` (ej. `http://supabasekong-*.195.201.118.14.sslip.io`)
-  - `PUBLIC_SUPABASE_ANON_KEY` (pública por diseño)
-- **⚠️ Importante:** `@supabase/supabase-js` **no está instalado** (se retiró en el saneo de agosto 2026). Usar `fetch` nativo en server (API route o server component). Si se prefiere el SDK, reinstalar: `npm i @supabase/supabase-js`.
+- **Panel Admin:** [`app/admin/page.tsx`](file:///root/.openclaw/worktrees/agencialquimia-web/app/admin/page.tsx) — Client component con pestaña "Tablas Supabase" (`FolderGit2`), sidebar y estado de hidratación seguro (`mounted`).
+- **Supabase Cloud / VPS:** Proyecto `ybqzcxabblyzqhezanaf` (`https://ybqzcxabblyzqhezanaf.supabase.co`).
+- **Variables de Entorno ([`.env.local`](file:///root/.openclaw/worktrees/agencialquimia-web/.env.local)):**
+  - `PUBLIC_SUPABASE_URL=https://ybqzcxabblyzqhezanaf.supabase.co`
+  - `PUBLIC_SUPABASE_ANON_KEY=sb_publishable_...` (o `eyJhbGciOi...`)
+- **Arquitectura Novedosa:** No requiere `@supabase/supabase-js`. Utiliza `fetch` nativo con los encabezados `apikey` y `Authorization: Bearer`.
 
-## Arquitectura recomendada
+## Las 11 Tablas Oficiales de AgenciAlquimia
+
+1. `leads_agencialquimia` *(Tabla principal de captación de leads)*
+2. `leads_hunter`
+3. `chat_messages`
+4. `chat_messages_alquimia`
+5. `chat_messages_cerebro`
+6. `conversaciones_alquimia`
+7. `n8n_chat_histories`
+8. `control_rutas`
+9. `ideas_agencia`
+10. `objetivos_agencia`
+11. `radar_queries`
+
+## Arquitectura de la Solución
 
 ```
-Admin (/admin)  →  API route Next (server)  →  PostgREST (Kong)  →  Supabase DB
+Admin Client (/admin)  →  Next.js API Server  →  Supabase PostgREST  →  PostgreSQL DB
 ```
 
-1. **Server-side siempre**: las llamadas a Kong van en API routes o server components; el cliente solo consume la API route del propio Next. La anon key es pública, pero centralizar en server evita duplicar lógica y facilita añadir auth real luego.
-2. **Descubrimiento de tablas** (sin SQL): `GET {PUBLIC_SUPABASE_URL}/rest/v1/` con cabeceras `apikey` + `Authorization: Bearer` devuelve la **spec OpenAPI** de PostgREST — los paths `/rest/v1/<tabla>` listan las tablas expuestas.
-3. **Datos de una tabla**: `GET {PUBLIC_SUPABASE_URL}/rest/v1/{tabla}?select=*&limit=100&offset=0&order=<columna>.asc`.
-4. **Render genérico**: componente `DataTable` que deriva columnas de la primera fila (o del schema OpenAPI), con estados loading/error, badges para valores de estado y celdas JSON colapsadas.
+### 1. Endpoint Proxy de Tablas ([`app/api/admin/tables/route.ts`](file:///root/.openclaw/worktrees/agencialquimia-web/app/api/admin/tables/route.ts))
+* Usa `export const dynamic = 'force-dynamic';` para evitar errores de caché.
+* Intenta inspeccionar `/rest/v1/` con OpenAPI. Si Supabase requiere clave secreta (401), realiza **sondeos paralelos** sobre la lista de las 11 tablas candidatas.
 
-## Pasos de implementación
+### 2. Endpoint Proxy de Datos ([`app/api/admin/data/route.ts`](file:///root/.openclaw/worktrees/agencialquimia-web/app/api/admin/data/route.ts))
+* Recibe parámetros `?table=leads_agencialquimia&limit=100&offset=0`.
+* Normaliza la URL sustituyendo `/rest/v1/` duplicados.
+* Retorna `{ success: true, table: "...", data: [...], isFallback: false }`.
 
-1. **Env**: confirmar `PUBLIC_SUPABASE_URL` y `PUBLIC_SUPABASE_ANON_KEY` en el contenedor (inyectadas por Coolify). Añadir ambos a `.env.example` como documentación.
-2. **API route**: crear `app/api/admin/tables/route.ts` (lista de tablas vía OpenAPI) y `app/api/admin/data/route.ts` (filas de una tabla, con `limit/offset/order` por query params). Seguir el patrón de `app/api/chat/route.ts` (timeout, manejo de errores).
-3. **Componente**: `components/admin/DataTable.tsx` — tabla genérica con las columnas detectadas; estilos con los tokens del admin (`slate-950`, `slate-900`, acento `emerald-500`).
-4. **Integración**: en `app/admin/page.tsx`, sustituir el array mock de `leads` por el fetch de la tabla configurada (ej. `leads`) usando la API route; mantener los badges de estado (`Pendiente | Enviado a IA | Finalizado`).
-5. **Verificación obligatoria**: `npx tsc --noEmit` · `npm run lint` · `npm test` · `npm run build` — 0 errores.
+### 3. Componente Explorador ([`components/admin/DataTable.tsx`](file:///root/.openclaw/worktrees/agencialquimia-web/components/admin/DataTable.tsx))
+* **Menú Desplegable (Dropdown Popover):** Desplegable estilizado en el encabezado para seleccionar fácilmente cualquiera de las 11 tablas.
+* **Auto-detección de columnas:** Deriva dinámicamente los campos de la primera fila (`cliente_nombre`, `cliente_correo`, `fecha_cita`, etc.).
+* **Protección de Hidratación (React #418):** Incluye la guardia `const [mounted, setMounted] = useState(false)` para garantizar sincronía total entre servidor y cliente.
 
-## Seguridad
+## Seguridad y Buenas Prácticas
 
-- **Solo anon key en este patrón**; la service role key jamás en el cliente ni en la web.
-- **RLS**: las tablas expuestas deben tener Row Level Security activo; conceder solo lo necesario: `GRANT SELECT ON public.<tabla> TO anon, authenticated;` (y UPDATE/INSERT solo si el admin los necesita).
-- El panel `/admin` hoy **no tiene autenticación real** (solo es una ruta). No añadir datos sensibles vía esta skill sin planificar auth (fuera de su alcance; avisar al responsable).
-- No loguear filas con datos personales.
+- Usar exclusivamente claves públicas o publishable (`sb_publishable_...` o `anon`). Jamás incluir la clave `service_role` en el cliente.
+- Mantener Row Level Security (RLS) activo en las tablas de Supabase.
+- En caso de fallo de red o variables no configuradas, el sistema activará automáticamente el banner amarillo de **Modo Vista Previa (Fallback)** sin tirar la página.
 
 ## Verificación tras implementar
 
-- `curl -H "apikey: $ANON" "$PUBLIC_SUPABASE_URL/rest/v1/"` → 200 con spec OpenAPI.
-- API route local: `curl http://localhost:3000/api/admin/tables` → 200 con JSON.
-- En el admin: la tabla renderiza columnas reales, paginación y estados de error visibles.
-- `npm run build` → 0 errores (y Coolify desplegará en el push).
+```bash
+# 1. Probar descubrimiento de las 11 tablas
+curl -s http://localhost:3000/api/admin/tables
 
-## Archivos de ejemplo
+# 2. Probar consulta de datos reales
+curl -s "http://localhost:3000/api/admin/data?table=leads_agencialquimia"
 
-- `examples/route.ts` — API route genérica (tablas + datos).
-- `examples/DataTable.tsx` — componente de tabla genérico.
+# 3. Comprobar suite completa
+npx tsc --noEmit && npm run lint && npm test && npm run build
+```
+
+## Estado verificado (16 de agosto de 2026)
+
+- **Instancia en uso:** Supabase **Cloud** `ybqzcxabblyzqhezanaf.supabase.co` (los valores reales están en `.env.local`, NO versionado). Existe además una instancia **self-hosted en el VPS** con otras tablas (ver skill `supabase-sql` y `notes/supabase-vps.md`) — no confundirlas.
+- **11/11 tablas responden HTTP 200** con la publishable key (`sb_publishable_...`), verificadas una a una.
+- **Datos reales:** `leads_agencialquimia` (3 filas, leads reales con `cliente_nombre`, `cliente_correo`, `fecha_cita`, `cliente_telefono`), `radar_queries` (4 filas); `chat_messages`, `n8n_chat_histories`, `ideas_agencia` vacías.
+- **Nota sobre descubrimiento:** la spec OpenAPI de `/rest/v1/` no lista tablas con la publishable key (requiere service role) → el código usa correctamente el **fallback de sondas paralelas** sobre las 11 candidatas.
+- **Suite completa en verde:** `npx tsc --noEmit` ✓ · `npm run lint` ✓ · `npm test` (6/6) ✓ · `npm run build` ✓.
+- **Archivos canónicos (implementación real):** `app/api/admin/tables/route.ts`, `app/api/admin/data/route.ts`, `components/admin/DataTable.tsx`, integración en `app/admin/page.tsx` (pestaña "Tablas Supabase"). Los `examples/` de esta skill quedan como referencia conceptual, superados por la implementación.

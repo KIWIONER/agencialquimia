@@ -19,8 +19,9 @@
  * ==============================================================================
  */
 
-import { useState } from 'react';
-import { Users, Bot, TrendingUp, Shield, Settings, LayoutDashboard, Database, UserCheck } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Users, Bot, TrendingUp, Shield, Settings, LayoutDashboard, Database, UserCheck, FolderGit2 } from 'lucide-react';
+import { DataTable } from '../../components/admin/DataTable';
 
 interface LeadItem {
   id: string;
@@ -32,6 +33,8 @@ interface LeadItem {
 }
 
 export default function AdminDashboardPage() {
+  const [mounted, setMounted] = useState(false);
+
   // Estado local para los prospectos/leads recibidos
   const [leads] = useState<LeadItem[]>([
     { id: '1', nombre: 'Carlos Ruiz', sector: 'Retail', contacto: 'carlos@tienda.es', estado: 'Pendiente', fecha: 'Hoy, 10:30' },
@@ -40,7 +43,19 @@ export default function AdminDashboardPage() {
     { id: '4', nombre: 'Elena Blanco', sector: 'Salud', contacto: '+34 604 555 888', estado: 'Enviado a IA', fecha: 'Hace 2 horas' },
   ]);
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'trainer' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'supabase' | 'trainer' | 'settings'>('dashboard');
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-slate-400">
+        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -94,6 +109,18 @@ export default function AdminDashboardPage() {
             </button>
             <button
               type="button"
+              onClick={() => setActiveTab('supabase')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
+                activeTab === 'supabase'
+                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+            >
+              <FolderGit2 className="w-5 h-5" />
+              <span>Tablas Supabase</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTab('trainer')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
                 activeTab === 'trainer'
@@ -131,8 +158,14 @@ export default function AdminDashboardPage() {
         {/* Cabecera del Panel */}
         <header className="flex items-center justify-between pb-6 border-b border-slate-800">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-white">Dashboard General</h1>
-            <p className="text-slate-400 text-sm mt-1">Control Center y Monitoreo de Leads en Tiempo Real</p>
+            <h1 className="text-3xl font-bold tracking-tight text-white">
+              {activeTab === 'supabase' ? 'Tablas de Supabase' : 'Dashboard General'}
+            </h1>
+            <p className="text-slate-400 text-sm mt-1">
+              {activeTab === 'supabase'
+                ? 'Explorador y Gestión de carpetas / tablas de la Base de Datos'
+                : 'Control Center y Monitoreo de Leads en Tiempo Real'}
+            </p>
           </div>
           <div className="px-4 py-2 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-400 text-xs font-semibold flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -141,79 +174,86 @@ export default function AdminDashboardPage() {
         </header>
 
         {/* Grid de Métricas Principales */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-slate-400">
-              <span className="text-xs uppercase font-bold tracking-wider">Total Leads</span>
-              <UserCheck className="w-5 h-5 text-emerald-400" />
+        {activeTab !== 'supabase' && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-xs uppercase font-bold tracking-wider">Total Leads</span>
+                <UserCheck className="w-5 h-5 text-emerald-400" />
+              </div>
+              <p className="text-4xl font-extrabold text-white">{leads.length}</p>
             </div>
-            <p className="text-4xl font-extrabold text-white">{leads.length}</p>
-          </div>
 
-          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-slate-400">
-              <span className="text-xs uppercase font-bold tracking-wider">Interacciones IA</span>
-              <Bot className="w-5 h-5 text-emerald-400" />
+            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-xs uppercase font-bold tracking-wider">Interacciones IA</span>
+                <Bot className="w-5 h-5 text-emerald-400" />
+              </div>
+              <p className="text-4xl font-extrabold text-white">1,284</p>
             </div>
-            <p className="text-4xl font-extrabold text-white">1,284</p>
-          </div>
 
-          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-slate-400">
-              <span className="text-xs uppercase font-bold tracking-wider">Tasa Conversión</span>
-              <TrendingUp className="w-5 h-5 text-emerald-400" />
+            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-xs uppercase font-bold tracking-wider">Tasa Conversión</span>
+                <TrendingUp className="w-5 h-5 text-emerald-400" />
+              </div>
+              <p className="text-4xl font-extrabold text-emerald-400">12.4%</p>
             </div>
-            <p className="text-4xl font-extrabold text-emerald-400">12.4%</p>
           </div>
-        </div>
+        )}
 
-        {/* Tabla de Leads Recientes */}
-        <section className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <Database className="w-5 h-5 text-emerald-400" />
-              <span>Últimos Leads (Transferidos)</span>
-            </h2>
-            <span className="text-xs text-slate-400">Actualizado automáticamente</span>
-          </div>
+        {/* Renderizado condicional según la pestaña seleccionada */}
+        {activeTab === 'supabase' ? (
+          <DataTable initialTable="leads" />
+        ) : (
+          /* Tabla de Leads Recientes */
+          <section className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Database className="w-5 h-5 text-emerald-400" />
+                <span>Últimos Leads (Transferidos)</span>
+              </h2>
+              <span className="text-xs text-slate-400">Actualizado automáticamente</span>
+            </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="bg-slate-950 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
-                <tr>
-                  <th className="p-4">Nombre</th>
-                  <th className="p-4">Sector</th>
-                  <th className="p-4">Contacto</th>
-                  <th className="p-4">Estado</th>
-                  <th className="p-4">Fecha</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {leads.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="p-4 font-semibold text-white">{lead.nombre}</td>
-                    <td className="p-4">{lead.sector}</td>
-                    <td className="p-4 font-mono text-xs text-slate-400">{lead.contacto}</td>
-                    <td className="p-4">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
-                          lead.estado === 'Finalizado'
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                            : lead.estado === 'Enviado a IA'
-                            ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                            : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                        }`}
-                      >
-                        {lead.estado}
-                      </span>
-                    </td>
-                    <td className="p-4 text-xs text-slate-400">{lead.fecha}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-300">
+                <thead className="bg-slate-950 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+                  <tr>
+                    <th className="p-4">Nombre</th>
+                    <th className="p-4">Sector</th>
+                    <th className="p-4">Contacto</th>
+                    <th className="p-4">Estado</th>
+                    <th className="p-4">Fecha</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {leads.map((lead) => (
+                    <tr key={lead.id} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="p-4 font-semibold text-white">{lead.nombre}</td>
+                      <td className="p-4">{lead.sector}</td>
+                      <td className="p-4 font-mono text-xs text-slate-400">{lead.contacto}</td>
+                      <td className="p-4">
+                        <span
+                          className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
+                            lead.estado === 'Finalizado'
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                              : lead.estado === 'Enviado a IA'
+                              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                              : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                          }`}
+                        >
+                          {lead.estado}
+                        </span>
+                      </td>
+                      <td className="p-4 text-xs text-slate-400">{lead.fecha}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
       </main>
       </div>
     </>

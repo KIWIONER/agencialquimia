@@ -28,8 +28,18 @@ Este documento constituye el **Banco de Memoria a Largo Plazo** del proyecto **A
 * **Plataforma de despliegue:** **Coolify** (PaaS self-hosted en el VPS). Cada push a `main` dispara la construcción de una imagen Docker etiquetada con el **hash del commit** y el despliegue del contenedor (Next.js v15.5.22 con `next start` dentro del contenedor, cwd `/app`).
 * **Proxy reverso:** **Traefik** (`coolify-proxy`) en los puertos **80/443**.
 * **Cache de estáticos:** `nginx.conf` del repo — caché inmutable de 1 año (`max-age=31536000, immutable`) para `/assets`, `/images`, `/fonts` y `/videos`.
-* **Supabase:** stack completo dockerizado en el VPS (auth, storage, kong, studio, postgrest...) aunque la web **no lo consume** (SDK retirado en agosto 2026).
+* **Supabase:** **dos instancias** (ver subsección dedicada abajo):
+  - **Supabase Cloud** (`ybqzcxabblyzqhezanaf.supabase.co`) → **es el que usa la web** (datos reales de leads/chat vía el explorador del admin).
+  - **Supabase self-hosted en el VPS** (stack docker completo: auth, storage, kong, studio, postgrest...) → instancia separada, la web **no la consume**.
 * **Otra infraestructura dockerizada:** n8n (puerto **5678**, expuesto vía `https://cerebro.agencialquimia.com`), PostgreSQL (**5432**).
+
+### Supabase: dos instancias y panel admin conectado (Agosto 2026)
+
+* **Instancia principal (producción web):** Supabase **Cloud** `https://ybqzcxabblyzqhezanaf.supabase.co` — **11 tablas** expuestas vía PostgREST, todas verificadas con HTTP 200 con la publishable key (`sb_publishable_...`, en `.env.local` como `PUBLIC_SUPABASE_URL`/`PUBLIC_SUPABASE_ANON_KEY`). Datos reales: `leads_agencialquimia` (3 filas), `radar_queries` (4), resto vacías.
+* **Las 11 tablas:** `leads_agencialquimia`, `leads_hunter`, `chat_messages`, `chat_messages_alquimia`, `chat_messages_cerebro`, `conversaciones_alquimia`, `n8n_chat_histories`, `control_rutas`, `ideas_agencia`, `objetivos_agencia`, `radar_queries`.
+* **Explorador en el panel admin:** pestaña "Tablas Supabase" en `app/admin/page.tsx` → API routes server-side `app/api/admin/tables/route.ts` (descubrimiento por OpenAPI + sondas paralelas + fallback) y `app/api/admin/data/route.ts` (filas paginadas con `Prefer: count=exact` + fallback mock) → componente `components/admin/DataTable.tsx` (dropdown de tablas, columnas auto-detectadas, badges, estado de carga, banner de Modo Vista Previa si falla la conexión). Sin `@supabase/supabase-js` (fetch nativo).
+* **Instancia secundaria (VPS):** stack docker en Coolify `jo0oosc8c0k088gg0kowokco` con tablas en esquema `public` (`leads_agencialquimia` 2 filas, `chat_messages` 126, `objetivos_agencia` 0) y `fruteria` (demo). Acceso y credenciales: `notes/supabase-vps.md` + skill `supabase-sql`.
+* **⚠️ Incidente de borrado periódico (16-ago):** dos veces el worktree perdió todas sus subcarpetas (15:41:44 y 16:41:44, misma hora exacta, sin rastro en cron/terminal). Sospechoso: el agente de Antigravity IDE. Defensa: `/root/scripts/vigilar-worktree.sh` (inotifywait) con evidencia en `/root/backups/agencialquimia/vigilancia/`. Recuperación probada: mirror local + GitHub. **Commitear y empujar pronto es la mejor protección.**
 
 ### Repositorio y Flujo de Trabajo
 
@@ -133,3 +143,4 @@ El proyecto se encuentra 100% migrado, corregido y unificado bajo un único ecos
 | **Julio 2026** | Creación de `next.config.mjs`, `app/robots.ts` y `app/sitemap.ts` nativos. | ✅ 10/10 rutas en 5.0s |
 | **Julio 2026** | Corrección de Contraste WCAG 2.1 AA en `Demos.tsx`, `Footer.tsx` y `Services.tsx`. | ✅ 10/10 rutas en 2.5s |
 | **Agosto 2026** | Despliegue en producción sobre **VPS propio** (nginx + `next start`) y desarrollo vía **git worktrees** (`/root/.openclaw/worktrees/agencialquimia-web`). | ✅ En producción |
+| **Agosto 2026** | Conexión en vivo con **Supabase Cloud** (`ybqzcxabblyzqhezanaf`): explorador de las **11 tablas** en el admin (`/admin` → pestaña Tablas Supabase) con API routes server-side y DataTable.tsx. Verificado: 11/11 tablas HTTP 200 + tsc/lint/test/build OK. | ✅ En producción |
