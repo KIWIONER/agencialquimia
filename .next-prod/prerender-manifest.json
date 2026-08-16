@@ -1,8 +1,12 @@
 {
   "version": 4,
   "routes": {
-    "/_not-found": {
-      "initialStatus": 404,
+    "/robots.txt": {
+      "initialHeaders": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/plain",
+        "x-next-cache-tags": "_N_T_/layout,_N_T_/robots.txt/layout,_N_T_/robots.txt/route,_N_T_/robots.txt"
+      },
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -15,8 +19,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/_not-found",
-      "dataRoute": "/_not-found.rsc",
+      "srcRoute": "/robots.txt",
+      "dataRoute": null,
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -55,12 +59,8 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/robots.txt": {
-      "initialHeaders": {
-        "cache-control": "public, max-age=0, must-revalidate",
-        "content-type": "text/plain",
-        "x-next-cache-tags": "_N_T_/layout,_N_T_/robots.txt/layout,_N_T_/robots.txt/route,_N_T_/robots.txt"
-      },
+    "/_not-found": {
+      "initialStatus": 404,
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -73,8 +73,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/robots.txt",
-      "dataRoute": null,
+      "srcRoute": "/_not-found",
+      "dataRoute": "/_not-found.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -108,30 +108,6 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/admin/login": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/admin/login",
-      "dataRoute": "/admin/login.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
     "/aviso-legal": {
       "experimentalBypassFor": [
         {
@@ -147,6 +123,30 @@
       "initialRevalidateSeconds": false,
       "srcRoute": "/aviso-legal",
       "dataRoute": "/aviso-legal.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/",
+      "dataRoute": "/index.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -180,7 +180,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/": {
+    "/admin/login": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -193,8 +193,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/",
-      "dataRoute": "/index.rsc",
+      "srcRoute": "/admin/login",
+      "dataRoute": "/admin/login.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -208,8 +208,8 @@
   "dynamicRoutes": {},
   "notFoundRoutes": [],
   "preview": {
-    "previewModeId": "db92aed0524c12342d00527a8dfe0685",
-    "previewModeSigningKey": "b2c8826fe4eb7469b25e672fb601d7fa619d4af97ef9389f1ae6eef5bdf4ce06",
-    "previewModeEncryptionKey": "20ec68990dc6e1751888cc5bfc7b493d4325cac937a2a87e14d3f138b905a5dc"
+    "previewModeId": "d51a124807ddf5c31b6480c9416b8a18",
+    "previewModeSigningKey": "c1e8a08cc20aa347dd0f8743f74b4cdb3825f8e874e61838338953aa276661fa",
+    "previewModeEncryptionKey": "7038cbfab2c0059c3d2698bc1e250c21667cc5d15a4889a1dd0d25b1d7018cf8"
   }
 }

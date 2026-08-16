@@ -44,10 +44,10 @@ export async function POST(request: Request) {
     const timeout = setTimeout(() => controller.abort(), 90000);
 
     if (body.viaWhatsapp) {
-      // Modo WhatsApp: lanza el mensaje al webhook de WhatsApp del workflow
-      // (payload estándar de Meta Cloud API) → el flujo n8n responde al móvil
-      // con el modelo del workflow (Gemini) vía la API de Meta.
-      const res = await fetch(`${webhookBase}/webhook/agencialquimia-whatsapp`, {
+      // Modo Max: lanza el mensaje al webhook de WhatsApp del workflow
+      // "MAX - Cerebro Personal WhatsApp" (payload estándar de Meta Cloud API)
+      // → Max (Gemini 2.5 Pro + memoria) responde al móvil vía API de Meta.
+      const res = await fetch(`${webhookBase}/webhook/max-whatsapp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

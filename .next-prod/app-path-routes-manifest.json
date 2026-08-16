@@ -7,13 +7,13 @@
   "/sitemap.xml/route": "/sitemap.xml",
   "/_not-found/page": "/_not-found",
   "/api/admin/data/route": "/api/admin/data",
+  "/api/admin/chat/route": "/api/admin/chat",
   "/api/admin/n8n/route": "/api/admin/n8n",
   "/api/admin/tables/route": "/api/admin/tables",
-  "/api/admin/chat/route": "/api/admin/chat",
   "/api/admin/n8n/[id]/route": "/api/admin/n8n/[id]",
-  "/admin/page": "/admin",
   "/admin/login/page": "/admin/login",
-  "/aviso-legal/page": "/aviso-legal",
   "/page": "/",
-  "/politica-de-privacidad/page": "/politica-de-privacidad"
+  "/aviso-legal/page": "/aviso-legal",
+  "/politica-de-privacidad/page": "/politica-de-privacidad",
+  "/admin/page": "/admin"
 }

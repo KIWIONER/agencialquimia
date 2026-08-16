@@ -7,13 +7,13 @@
   "/sitemap.xml/route": "app/sitemap.xml/route.js",
   "/_not-found/page": "app/_not-found/page.js",
   "/api/admin/data/route": "app/api/admin/data/route.js",
+  "/api/admin/chat/route": "app/api/admin/chat/route.js",
   "/api/admin/n8n/route": "app/api/admin/n8n/route.js",
   "/api/admin/tables/route": "app/api/admin/tables/route.js",
-  "/api/admin/chat/route": "app/api/admin/chat/route.js",
   "/api/admin/n8n/[id]/route": "app/api/admin/n8n/[id]/route.js",
-  "/admin/page": "app/admin/page.js",
   "/admin/login/page": "app/admin/login/page.js",
-  "/aviso-legal/page": "app/aviso-legal/page.js",
   "/page": "app/page.js",
-  "/politica-de-privacidad/page": "app/politica-de-privacidad/page.js"
+  "/aviso-legal/page": "app/aviso-legal/page.js",
+  "/politica-de-privacidad/page": "app/politica-de-privacidad/page.js",
+  "/admin/page": "app/admin/page.js"
 }

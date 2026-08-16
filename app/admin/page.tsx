@@ -46,12 +46,10 @@ export default function AdminDashboardPage() {
   
   type ChatMessage = { role: 'user' | 'ai', text: string };
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { role: 'ai', text: 'Hola 👋 Soy el asistente IA de AgenciAlquimia. ¿En qué te ayudo?' },
+    { role: 'ai', text: 'Hola 👋 Soy Max, tu asistente personal. Escríbeme y te respondo por WhatsApp con mi modelo (Gemini 2.5 Pro).' },
   ]);
   const [chatLoading, setChatLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string>(() => `panel_${Date.now()}`);
-  // Modo de respuesta: por WhatsApp (el agente responde al móvil) o en el panel
-  const [respuestaWhatsapp, setRespuestaWhatsapp] = useState(true);
 
   // Estado local para los prospectos/leads recibidos
   const [leads] = useState<LeadItem[]>([
@@ -92,14 +90,14 @@ export default function AdminDashboardPage() {
       const res = await fetch('/api/admin/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatInput: newUserMsg.text, sessionId, viaWhatsapp: respuestaWhatsapp }),
+        body: JSON.stringify({ chatInput: newUserMsg.text, sessionId, viaWhatsapp: true }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? 'Error');
       if (data.viaWhatsapp) {
         setChatMessages((prev: ChatMessage[]) => [
           ...prev,
-          { role: 'ai', text: '📱 Mensaje enviado por WhatsApp — el agente te responde en tu móvil con el modelo del workflow.' },
+          { role: 'ai', text: '📱 Mensaje enviado a Max — te responde por WhatsApp con el modelo de su workflow (Gemini 2.5 Pro).' },
         ]);
       } else {
         setChatMessages((prev: ChatMessage[]) => [...prev, { role: 'ai', text: data.response }]);
@@ -117,7 +115,7 @@ export default function AdminDashboardPage() {
   // Reinicia la conversación con un sessionId nuevo (el agente olvida el hilo)
   const nuevaConversacion = () => {
     setSessionId(`panel_${Date.now()}`);
-    setChatMessages([{ role: 'ai', text: 'Hola 👋 Soy el asistente IA de AgenciAlquimia. ¿En qué te ayudo?' }]);
+    setChatMessages([{ role: 'ai', text: 'Hola 👋 Soy Max, tu asistente personal. Escríbeme y te respondo por WhatsApp con mi modelo (Gemini 2.5 Pro).' }]);
   };
 
   if (!mounted) {
@@ -311,21 +309,12 @@ export default function AdminDashboardPage() {
             <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-950">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <Bot className="w-5 h-5 text-emerald-400" />
-                <span>IA Trainer · Chat con el agente</span>
+                <span>IA Trainer · Chat con Max</span>
               </h2>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRespuestaWhatsapp((v) => !v)}
-                  title="Si está activado, el agente responde a tu WhatsApp en lugar del panel"
-                  className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
-                    respuestaWhatsapp
-                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
-                  }`}
-                >
-                  📱 {respuestaWhatsapp ? 'Respuesta por WhatsApp' : 'Respuesta en panel'}
-                </button>
+                <span className="px-2 py-1.5 text-xs font-bold rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                  📱 Max responde por WhatsApp
+                </span>
                 <button
                   type="button"
                   onClick={nuevaConversacion}
@@ -366,7 +355,7 @@ export default function AdminDashboardPage() {
                   type="text"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Escribe un mensaje para el agente..."
+                  placeholder="Escribe un mensaje para Max..."
                   className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
                 />
                 <button
