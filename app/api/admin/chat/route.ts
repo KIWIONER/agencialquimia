@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   // N8N_API_URL suele incluir /api/v1 (API pública); los webhooks viven en la raíz
   const webhookBase = apiUrl.replace(/\/api\/v1\/?$/, '');
 
-  let body: { chatInput?: string; sessionId?: string };
+  let body: { chatInput?: string; sessionId?: string; viaWhatsapp?: boolean };
   try {
     body = await request.json();
   } catch {
@@ -36,9 +36,50 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'chatInput vacío' }, { status: 400 });
   }
 
+  // Número de WhatsApp de Matías (el mismo que usa el workflow en ¿Es Matías?)
+  const telefonoMatias = process.env.ADMIN_WHATSAPP_DESTINO ?? '34657738334';
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 90000);
+
+    if (body.viaWhatsapp) {
+      // Modo WhatsApp: lanza el mensaje al webhook de WhatsApp del workflow
+      // (payload estándar de Meta Cloud API) → el flujo n8n responde al móvil
+      // con el modelo del workflow (Gemini) vía la API de Meta.
+      const res = await fetch(`${webhookBase}/webhook/agencialquimia-whatsapp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entry: [
+            {
+              changes: [
+                {
+                  value: {
+                    messages: [
+                      { from: telefonoMatias, type: 'text', text: { body: chatInput } },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!res.ok) {
+        console.error('[chat/wa] agente respondió', res.status);
+        return NextResponse.json({ message: `El agente respondió ${res.status}` }, { status: 502 });
+      }
+      const data = await res.json();
+      return NextResponse.json({
+        success: true,
+        viaWhatsapp: true,
+        response: data?.message ?? 'Workflow was started',
+      });
+    }
 
     const res = await fetch(`${webhookBase}/webhook/v1/agente/consulta`, {
       method: 'POST',

@@ -50,6 +50,8 @@ export default function AdminDashboardPage() {
   ]);
   const [chatLoading, setChatLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string>(() => `panel_${Date.now()}`);
+  // Modo de respuesta: por WhatsApp (el agente responde al móvil) o en el panel
+  const [respuestaWhatsapp, setRespuestaWhatsapp] = useState(true);
 
   // Estado local para los prospectos/leads recibidos
   const [leads] = useState<LeadItem[]>([
@@ -90,11 +92,18 @@ export default function AdminDashboardPage() {
       const res = await fetch('/api/admin/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatInput: newUserMsg.text, sessionId }),
+        body: JSON.stringify({ chatInput: newUserMsg.text, sessionId, viaWhatsapp: respuestaWhatsapp }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? 'Error');
-      setChatMessages((prev: ChatMessage[]) => [...prev, { role: 'ai', text: data.response }]);
+      if (data.viaWhatsapp) {
+        setChatMessages((prev: ChatMessage[]) => [
+          ...prev,
+          { role: 'ai', text: '📱 Mensaje enviado por WhatsApp — el agente te responde en tu móvil con el modelo del workflow.' },
+        ]);
+      } else {
+        setChatMessages((prev: ChatMessage[]) => [...prev, { role: 'ai', text: data.response }]);
+      }
     } catch (err) {
       setChatMessages((prev: ChatMessage[]) => [
         ...prev,
@@ -305,6 +314,18 @@ export default function AdminDashboardPage() {
                 <span>IA Trainer · Chat con el agente</span>
               </h2>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRespuestaWhatsapp((v) => !v)}
+                  title="Si está activado, el agente responde a tu WhatsApp en lugar del panel"
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
+                    respuestaWhatsapp
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+                  }`}
+                >
+                  📱 {respuestaWhatsapp ? 'Respuesta por WhatsApp' : 'Respuesta en panel'}
+                </button>
                 <button
                   type="button"
                   onClick={nuevaConversacion}
