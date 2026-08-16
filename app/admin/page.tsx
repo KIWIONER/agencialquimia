@@ -25,6 +25,7 @@ import Link from 'next/link';
 import { Users, Bot, TrendingUp, Shield, Settings, LayoutDashboard, Database, UserCheck, FolderGit2, LogOut, Bell, Send, ExternalLink, Workflow } from 'lucide-react';
 import { DataTable } from '../../components/admin/DataTable';
 import LeadPipeline from '../../components/admin/LeadPipeline';
+import MaxChat from '../../components/admin/MaxChat';
 import { N8nWorkflows } from '../../components/admin/N8nWorkflows';
 
 interface LeadItem {
@@ -305,69 +306,7 @@ export default function AdminDashboardPage() {
         ) : activeTab === 'n8n' ? (
           <N8nWorkflows />
         ) : activeTab === 'trainer' ? (
-          <section className="h-[70vh] flex flex-col rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-950">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Bot className="w-5 h-5 text-emerald-400" />
-                <span>IA Trainer · Chat con Max</span>
-              </h2>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-1.5 text-xs font-bold rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  📱 Max responde por WhatsApp
-                </span>
-                <button
-                  type="button"
-                  onClick={nuevaConversacion}
-                  className="px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
-                >
-                  ✨ Nueva conversación
-                </button>
-                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  Agente Online
-                </span>
-              </div>
-            </div>
-            
-            <div className="flex-1 p-6 overflow-y-auto space-y-4 flex flex-col">
-              {chatMessages.map((msg: ChatMessage, i: number) => (
-                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] rounded-2xl p-4 ${msg.role === 'user' ? 'bg-emerald-600 text-white rounded-br-none' : 'bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700'}`}>
-                    <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
-                  </div>
-                </div>
-              ))}
-              {chatLoading && (
-                <div className="flex justify-start">
-                  <div className="max-w-[80%] rounded-2xl p-4 bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700">
-                    <div className="flex gap-1.5 items-center px-2 py-1">
-                      <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce"></span>
-                      <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
-                      <span className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="p-4 bg-slate-950 border-t border-slate-800">
-              <form onSubmit={handleSendMessage} className="flex gap-3">
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Escribe un mensaje para Max..."
-                  className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
-                />
-                <button
-                  type="submit"
-                  disabled={!chatInput.trim() || chatLoading}
-                  className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-medium transition-colors flex items-center justify-center"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
-              </form>
-            </div>
-          </section>
+          <MaxChat />
         ) : activeTab === 'settings' ? (
           <section className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
             <div className="flex items-center justify-between border-b border-slate-800 pb-4">
