@@ -44,41 +44,33 @@ export async function POST(request: Request) {
     const timeout = setTimeout(() => controller.abort(), 90000);
 
     if (body.viaWhatsapp) {
-      // Modo Max: lanza el mensaje al webhook de WhatsApp del workflow
-      // "MAX - Cerebro Personal WhatsApp" (payload estándar de Meta Cloud API)
-      // → Max (Gemini 2.5 Pro + memoria) responde al móvil vía API de Meta.
-      const res = await fetch(`${webhookBase}/webhook/max-whatsapp`, {
+      // Modo Max (panel): llama al webhook síncrono "max-panel" del workflow
+      // "MAX - Panel Admin (chat)" → Max (Gemini 2.5 Pro + memoria) responde
+      // EN EL PANEL (responseNode), no por WhatsApp. Comparte memoria con el
+      // WhatsApp real vía sessionId max_<telefono>.
+      const res = await fetch(`${webhookBase}/webhook/max-panel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          entry: [
-            {
-              changes: [
-                {
-                  value: {
-                    messages: [
-                      { from: telefonoMatias, type: 'text', text: { body: chatInput } },
-                    ],
-                  },
-                },
-              ],
-            },
-          ],
+          chatInput,
+          sessionId: body.sessionId ?? `max_${telefonoMatias}`,
         }),
         signal: controller.signal,
       });
       clearTimeout(timeout);
 
       if (!res.ok) {
-        console.error('[chat/wa] agente respondió', res.status);
-        return NextResponse.json({ message: `El agente respondió ${res.status}` }, { status: 502 });
+        console.error('[chat/wa] max-panel respondió', res.status);
+        return NextResponse.json({ message: `Max respondió ${res.status}` }, { status: 502 });
       }
       const data = await res.json();
-      return NextResponse.json({
-        success: true,
-        viaWhatsapp: true,
-        response: data?.message ?? 'Workflow was started',
-      });
+      const response =
+        typeof data?.output === 'string'
+          ? data.output
+          : typeof data?.response === 'string'
+            ? data.response
+            : JSON.stringify(data);
+      return NextResponse.json({ success: true, viaWhatsapp: true, response });
     }
 
     const res = await fetch(`${webhookBase}/webhook/v1/agente/consulta`, {

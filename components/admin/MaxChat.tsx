@@ -55,7 +55,7 @@ export default function MaxChat() {
   const [messages, setMessages] = useState<ChatMsg[]>([
     {
       role: 'ai',
-      text: 'Hola 👋 Soy Max, tu cerebro personal. Escríbeme y te responderé por WhatsApp con Gemini 2.5 Pro.',
+      text: 'Hola 👋 Soy Max, tu cerebro personal. Escríbeme y te responderé aquí mismo, en el panel.',
       time: fmtHora(new Date()),
     },
   ]);
@@ -121,13 +121,10 @@ export default function MaxChat() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? 'Error');
+      const respuesta = data?.response ?? '…';
       setMessages((prev) => [
         ...prev,
-        {
-          role: 'system',
-          text: '📱 Mensaje entregado a Max — te responde por WhatsApp (Meta Cloud API).',
-          time: fmtHora(new Date()),
-        },
+        { role: 'ai', text: respuesta, time: fmtHora(new Date()) },
       ]);
     } catch (err) {
       setMessages((prev) => [
@@ -147,7 +144,7 @@ export default function MaxChat() {
     setMessages([
       {
         role: 'ai',
-        text: 'Hola 👋 Soy Max, tu cerebro personal. Escríbeme y te responderé por WhatsApp con Gemini 2.5 Pro.',
+        text: 'Hola 👋 Soy Max, tu cerebro personal. Escríbeme y te responderé aquí mismo, en el panel.',
         time: fmtHora(new Date()),
       },
     ]);
@@ -262,7 +259,7 @@ export default function MaxChat() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Escribe un mensaje para Max… (responderá por WhatsApp)"
+              placeholder="Escribe un mensaje para Max… (responde aquí en el panel)"
               disabled={loading}
               className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-sm disabled:opacity-50"
             />
@@ -276,7 +273,7 @@ export default function MaxChat() {
             </button>
           </form>
           <p className="text-[10px] text-slate-600 mt-2 flex items-center gap-1">
-            <Sparkles className="w-3 h-3" /> Respuesta por WhatsApp a {TELEFONO_MAX} · Enter para enviar
+            <Sparkles className="w-3 h-3" /> Respuesta directa en el panel · Gemini 2.5 Pro · Enter para enviar
           </p>
         </div>
       </div>
@@ -299,9 +296,9 @@ export default function MaxChat() {
               </div>
             </div>
             <div className="mt-3 space-y-1.5 text-[11px] text-slate-400">
-              <p className="flex items-center gap-1.5"><WorkflowIcon className="w-3 h-3 text-slate-500" /> Workflow: {wfInfo.name ?? 'MAX - Cerebro Personal WhatsApp'}</p>
-              <p className="flex items-center gap-1.5"><MessageSquare className="w-3 h-3 text-slate-500" /> Canal: WhatsApp · Meta Cloud API</p>
-              <p className="flex items-center gap-1.5"><Phone className="w-3 h-3 text-slate-500" /> Número destino: {TELEFONO_MAX}</p>
+              <p className="flex items-center gap-1.5"><WorkflowIcon className="w-3 h-3 text-slate-500" /> Workflow: MAX - Panel Admin (chat)</p>
+              <p className="flex items-center gap-1.5"><MessageSquare className="w-3 h-3 text-slate-500" /> Canal: Panel admin · webhook max-panel</p>
+              <p className="flex items-center gap-1.5"><Phone className="w-3 h-3 text-slate-500" /> Memoria compartida con WhatsApp ({TELEFONO_MAX})</p>
               <p className="flex items-center gap-1.5"><Database className="w-3 h-3 text-slate-500" /> Memoria: PostgreSQL persistente</p>
             </div>
           </div>

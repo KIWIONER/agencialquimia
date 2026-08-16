@@ -12,6 +12,7 @@ node_modules/
 
 # Carpeta de compilación y caché de Next.js
 .next/
+.next-prod/
 out/
 build/
 dist/
