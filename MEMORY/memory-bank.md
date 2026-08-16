@@ -2,6 +2,8 @@
 
 Este documento constituye el **Banco de Memoria a Largo Plazo** del proyecto **AgenciAlquimia**. Su propósito es almacenar el contexto del negocio, la arquitectura técnica, las decisiones de diseño, el historial de auditorías y las directivas de desarrollo para garantizar continuidad, estabilidad y cero regresiones en futuras iteraciones.
 
+> **Última actualización:** 16 de agosto de 2026 — registro de la nueva situación actual: despliegue en producción sobre VPS propio y desarrollo vía git worktrees.
+
 ---
 
 ## 1. Visión del Negocio & Identidad de Marca
@@ -16,12 +18,38 @@ Este documento constituye el **Banco de Memoria a Largo Plazo** del proyecto **A
 
 ---
 
-## 2. Arquitectura de Software & Stack Tecnológico
+## 2. Situación Actual — Despliegue en VPS Propio (Agosto 2026) 🖥️
+
+> **Cambio fundamental:** el proyecto ya **NO se despliega en Vercel**. Producción corre **24/7 en el VPS propio de AgenciAlquimia** (esta máquina). Todo el desarrollo se realiza directamente en el VPS mediante **git worktrees**.
+
+### Hosting y Ejecución en Producción
+
+* **Servidor:** VPS propio (dominio `agencialquimia.com`; subdominio del agente IA: `cerebro.agencialquimia.com`).
+* **Proceso web:** Next.js **v15.5.22** en producción con `next start` (servicio en segundo plano; visible en `ps` como `sh -c next start` → `next-server`).
+* **Proxy reverso:** nginx en los puertos **80/443**.
+* **Cache de estáticos:** `nginx.conf` del repo — caché inmutable de 1 año (`max-age=31536000, immutable`) para `/assets`, `/images`, `/fonts` y `/videos`.
+* **Gestión de procesos:** sin PM2 ni systemd dedicado; el proceso Next se lanza con `next start`.
+* **Infraestructura dockerizada en el VPS:** n8n (puerto **5678**, expuesto vía `https://cerebro.agencialquimia.com`), Supabase/PostgreSQL (**5432**), Kong/OpenResty (**8000/8080**), proxy 80/443 vía Docker.
+
+### Repositorio y Flujo de Trabajo
+
+* **Remoto:** `git@github.com:KIWIONER/agencialquimia.git` — rama `main`, sincronizada con `origin/main`.
+* **Worktree de desarrollo (este repo):** `/root/.openclaw/worktrees/agencialquimia-web`.
+* **Proyecto hermano:** `/root/agencialquimia-agent` — agente/automatización n8n asociada a la web.
+* **Entorno:** `.env.local` con `N8N_WEBHOOK_URL=https://cerebro.agencialquimia.com/webhook/v1/agente/consulta` (proxy `/api/chat` → n8n, timeout 8s y resiliencia CRO a WhatsApp).
+
+### Nota sobre rutas antiguas
+
+* Las rutas estilo `c:/Proyectos/agencialquimia/` (Windows) que aparecen en secciones posteriores están **obsoletas**: la ubicación real del código es la del worktree en el VPS indicada arriba.
+
+---
+
+## 3. Arquitectura de Software & Stack Tecnológico
 
 El proyecto se encuentra 100% migrado, corregido y unificado bajo un único ecosistema **Next.js (App Router)**:
 
 ```
-agencialquimia/
+/root/.openclaw/worktrees/agencialquimia-web/   # Worktree en el VPS
 ├── app/                        # Next.js App Router (Páginas, Rutas de API y Layouts)
 │   ├── admin/                  # Dashboard de Administración unificado (/admin)
 │   ├── api/chat/               # Backend Proxy Seguro para el agente de n8n (/api/chat)
@@ -58,7 +86,7 @@ agencialquimia/
 
 ---
 
-## 3. Sistema de Diseño Visual, Accesibilidad & WPO (Dark Charcoal Theme)
+## 4. Sistema de Diseño Visual, Accesibilidad & WPO (Dark Charcoal Theme)
 
 * **Fondo Principal:** `#0b0d10` (negro-grisáceo carbón profundo) con entramado radial esmeralda (`rgba(16, 185, 129, 0.12)`).
 * **Tarjetas y Módulos:** `#161a22` (`glass-card-dark`) con desenfoque de fondo (`backdrop-blur`) y bordes de cristal (`rgba(255, 255, 255, 0.08)`).
@@ -68,14 +96,14 @@ agencialquimia/
 
 ---
 
-## 4. Soluciones de Auditoría & WPO Resueltas
+## 5. Soluciones de Auditoría & WPO Resueltas
 
 1. **Ajuste de Ratios de Contraste WCAG 2.1 AA:**
-   - Elevados los textos secundarios en [components/Demos.tsx](file:///c:/Proyectos/agencialquimia/components/Demos.tsx), [components/Footer.tsx](file:///c:/Proyectos/agencialquimia/components/Footer.tsx) y [components/Services.tsx](file:///c:/Proyectos/agencialquimia/components/Services.tsx) a `text-gray-200` y `text-emerald-300`, superando la exigencia de contraste 4.5:1 en Lighthouse.
+   - Elevados los textos secundarios en [components/Demos.tsx](components/Demos.tsx), [components/Footer.tsx](components/Footer.tsx) y [components/Services.tsx](components/Services.tsx) a `text-gray-200` y `text-emerald-300`, superando la exigencia de contraste 4.5:1 en Lighthouse.
 2. **Compresión SWC y Minificación de JS:**
-   - Creado [next.config.mjs](file:///c:/Proyectos/agencialquimia/next.config.mjs) habilitando compresión global y limpieza de `console.log` en producción.
+   - Creado [next.config.mjs](next.config.mjs) habilitando compresión global y limpieza de `console.log` en producción.
 3. **Motores Dinámicos de SEO Nativo:**
-   - Creados [app/robots.ts](file:///c:/Proyectos/agencialquimia/app/robots.ts) y [app/sitemap.ts](file:///c:/Proyectos/agencialquimia/app/sitemap.ts).
+   - Creados [app/robots.ts](app/robots.ts) y [app/sitemap.ts](app/sitemap.ts).
 4. **Eliminación de la Cadena Crítica LCP Bloqueante:**
    - Habilitado `preload: true` en `next/font/google` e inyectadas etiquetas `preconnect`.
 5. **Proxy Backend Seguro para IA (`/api/chat`):**
@@ -83,7 +111,7 @@ agencialquimia/
 
 ---
 
-## 5. Reglas & Directivas de Desarrollo Permanentes
+## 6. Reglas & Directivas de Desarrollo Permanentes
 
 * **Tipado TypeScript Estricto:** Prohibido el uso de `any` no tipado. Definir contratos en `types/`.
 * **Comentarios y Documentación Exhaustiva:** Todo archivo nuevo o modificado DEBE incluir un bloque de comentarios superior JSDoc en español y comentarios explicativos en cada función y sección JSX.
@@ -92,7 +120,7 @@ agencialquimia/
 
 ---
 
-## 6. Historial de Hitos y Estado de Compilación
+## 7. Historial de Hitos y Estado de Compilación
 
 | Fecha | Hito Alcanzado | Estado de Validación |
 | :--- | :--- | :---: |
@@ -104,3 +132,4 @@ agencialquimia/
 | **Julio 2026** | Optimización WPO LCP: Precarga WOFF2, `preconnect` e inyección fallback Zero FOIT. | ✅ 8/8 páginas en 3.0s |
 | **Julio 2026** | Creación de `next.config.mjs`, `app/robots.ts` y `app/sitemap.ts` nativos. | ✅ 10/10 rutas en 5.0s |
 | **Julio 2026** | Corrección de Contraste WCAG 2.1 AA en `Demos.tsx`, `Footer.tsx` y `Services.tsx`. | ✅ 10/10 rutas en 2.5s |
+| **Agosto 2026** | Despliegue en producción sobre **VPS propio** (nginx + `next start`) y desarrollo vía **git worktrees** (`/root/.openclaw/worktrees/agencialquimia-web`). | ✅ En producción |
