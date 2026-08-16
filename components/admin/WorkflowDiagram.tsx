@@ -15,13 +15,15 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Bot, Webhook, Zap, BrainCircuit, GitBranch, MessageSquare, Database, Move, Save, RotateCcw, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Bot, Webhook, Zap, BrainCircuit, GitBranch, MessageSquare, Database, Move, Save, RotateCcw, RefreshCw, X } from 'lucide-react';
 
 interface NodeItem {
   id: string;
   name: string;
   type: string;
   position?: [number, number];
+  parameters?: Record<string, unknown>;
+  credentials?: Record<string, unknown>;
 }
 
 interface ConnectionItem {
@@ -89,6 +91,7 @@ export function WorkflowDiagram({ id, name, nodes, connections, onBack }: Workfl
   const [nodePos, setNodePos] = useState<Record<string, [number, number]>>(() => originalPos);
   const [baseline, setBaseline] = useState<Record<string, [number, number]>>(originalPos);
   const [dragging, setDragging] = useState<string | null>(null);
+  const [selected, setSelected] = useState<NodeItem | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -200,6 +203,19 @@ export function WorkflowDiagram({ id, name, nodes, connections, onBack }: Workfl
     setDragging(null);
   };
 
+  // Mostrar el detalle (parámetros) de un nodo al hacer click
+  const openNode = (n: NodeItem) => {
+    if (!dragRef.current) setSelected(n);
+  };
+
+  /** Renderiza el valor de un parámetro de forma legible */
+  const renderParamValue = (v: unknown): string => {
+    if (v === null || v === undefined) return '—';
+    if (typeof v === 'object') return JSON.stringify(v, null, 1);
+    if (typeof v === 'boolean') return v ? 'true' : 'false';
+    return String(v);
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-3 mb-3">
@@ -245,6 +261,7 @@ export function WorkflowDiagram({ id, name, nodes, connections, onBack }: Workfl
         </div>
       </div>
 
+      <div className="flex flex-1 gap-3 min-h-0">
       <div ref={containerRef} className="relative flex-1 min-h-[420px] rounded-xl bg-slate-950/70 border border-slate-800 overflow-hidden select-none">
         <div className="relative" style={{ width: canvasW * fitScale, height: canvasH * fitScale }}>
           <div className="absolute top-0 left-0 origin-top-left" style={{ transform: `scale(${fitScale})`, width: canvasW, height: canvasH }}>
@@ -282,9 +299,10 @@ export function WorkflowDiagram({ id, name, nodes, connections, onBack }: Workfl
               onPointerDown={(e) => onPointerDown(e, n)}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
+              onClick={() => openNode(n)}
               className={`absolute flex items-center gap-2.5 px-3 py-2 rounded-xl border shadow-lg cursor-grab active:cursor-grabbing touch-none ${
                 isDragging ? 'ring-2 ring-emerald-400/60 z-10 opacity-95' : 'hover:border-emerald-400/60'
-              } ${style.bg} ${style.border}`}
+              } ${selected?.id === n.id ? 'ring-2 ring-emerald-400/60' : ''} ${style.bg} ${style.border}`}
               style={{ left: x, top: y, width: NODE_W, minHeight: NODE_H }}
               title={`${n.type} — arrastra para mover`}
             >
@@ -300,6 +318,54 @@ export function WorkflowDiagram({ id, name, nodes, connections, onBack }: Workfl
         })}
           </div>
         </div>
+      </div>
+
+      {/* Panel de detalle del nodo seleccionado */}
+      {selected && (
+        <aside className="w-80 shrink-0 rounded-xl bg-slate-900 border border-slate-800 overflow-y-auto p-4">
+          <div className="flex items-start justify-between gap-2 mb-3">
+            <div className="min-w-0">
+              <h4 className="text-sm font-bold text-white truncate">{selected.name}</h4>
+              <p className="text-[11px] text-slate-500 font-mono truncate">{selected.type}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelected(null)}
+              className="shrink-0 p-1 rounded-lg bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
+              aria-label="Cerrar detalle"
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          {selected.credentials && Object.keys(selected.credentials).length > 0 && (
+            <div className="mb-3">
+              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-1">Credencial</p>
+              <p className="text-xs text-amber-300">{Object.values(selected.credentials).join(' · ')}</p>
+            </div>
+          )}
+
+          <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">Parámetros</p>
+          {selected.parameters && Object.keys(selected.parameters).length > 0 ? (
+            <div className="space-y-2.5">
+              {Object.entries(selected.parameters).map(([k, v]) => (
+                <div key={k}>
+                  <p className="text-[11px] font-semibold text-slate-400 capitalize">{k.replace(/[_.]/g, ' ')}</p>
+                  {typeof v === 'object' && v !== null ? (
+                    <pre className="mt-0.5 text-[10px] text-emerald-300/90 bg-slate-950/70 border border-slate-800 rounded-lg p-2 overflow-x-auto whitespace-pre-wrap break-words">
+                      {renderParamValue(v)}
+                    </pre>
+                  ) : (
+                    <p className="text-xs text-slate-200 mt-0.5 break-words">{renderParamValue(v)}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500">Sin parámetros.</p>
+          )}
+        </aside>
+      )}
       </div>
     </div>
   );

@@ -31,7 +31,14 @@ interface N8nState {
 interface DiagramState {
   id: string;
   name: string;
-  nodes: Array<{ id: string; name: string; type: string; position?: [number, number] }>;
+  nodes: Array<{
+    id: string;
+    name: string;
+    type: string;
+    position?: [number, number];
+    parameters?: Record<string, unknown>;
+    credentials?: Record<string, unknown>;
+  }>;
   connections: Record<string, unknown>;
 }
 

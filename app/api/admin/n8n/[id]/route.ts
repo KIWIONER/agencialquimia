@@ -21,6 +21,10 @@ interface N8nNode {
   parameters?: Record<string, unknown>;
 }
 
+export interface N8nNodeDetail extends N8nNode {
+  credentials?: Record<string, unknown>;
+}
+
 async function n8nFetch(apiUrl: string, apiKey: string, path: string, init?: RequestInit) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -55,11 +59,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     }
 
     const wf = await res.json();
-    const nodes: N8nNode[] = (wf.nodes ?? []).map((n: N8nNode) => ({
+    const nodes: N8nNodeDetail[] = (wf.nodes ?? []).map((n: N8nNodeDetail) => ({
       id: n.id,
       name: n.name,
       type: n.type,
+      typeVersion: n.typeVersion,
       position: n.position,
+      parameters: n.parameters,
+      credentials: n.credentials,
     }));
 
     return NextResponse.json({
