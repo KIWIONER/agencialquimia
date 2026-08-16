@@ -24,6 +24,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Users, Bot, TrendingUp, Shield, Settings, LayoutDashboard, Database, UserCheck, FolderGit2, LogOut, Bell, Send, ExternalLink, Workflow } from 'lucide-react';
 import { DataTable } from '../../components/admin/DataTable';
+import LeadPipeline from '../../components/admin/LeadPipeline';
 import { N8nWorkflows } from '../../components/admin/N8nWorkflows';
 
 interface LeadItem {
@@ -58,6 +59,7 @@ export default function AdminDashboardPage() {
   ]);
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'supabase' | 'n8n' | 'trainer' | 'settings'>('dashboard');
+  const [prospectosView, setProspectosView] = useState<'pipeline' | 'tabla'>('pipeline');
 
   useEffect(() => {
     setMounted(true);
@@ -377,16 +379,46 @@ export default function AdminDashboardPage() {
             </div>
           </section>
         ) : (
-          /* Prospectos: tabla real de leads_agencialquimia (Supabase Cloud) */
+          /* Prospectos: pipeline guiado + tabla real de leads_agencialquimia */
           <section className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <Database className="w-5 h-5 text-emerald-400" />
                 <span>Prospectos (Leads)</span>
               </h2>
-              <span className="text-xs text-slate-400">Datos en vivo de Supabase · leads_agencialquimia</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400">Datos en vivo de Supabase</span>
+                <div className="flex rounded-xl bg-slate-800 border border-slate-700 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setProspectosView('pipeline')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                      prospectosView === 'pipeline'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    🗂️ Pipeline
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProspectosView('tabla')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                      prospectosView === 'tabla'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    📋 Tabla
+                  </button>
+                </div>
+              </div>
             </div>
-            <DataTable initialTable="leads_agencialquimia" />
+            {prospectosView === 'pipeline' ? (
+              <LeadPipeline />
+            ) : (
+              <DataTable initialTable="leads_agencialquimia" />
+            )}
           </section>
         )}
       </main>

@@ -101,7 +101,19 @@ export function DataTable({ initialTable = 'leads_agencialquimia' }: DataTablePr
     }
   }, [mounted, selectedTable, fetchTableData]);
 
-  const columns = data.length > 0 ? Object.keys(data[0]) : [];
+  // Solo mostrar columnas que tengan contenido en al menos una fila
+  const columns =
+    data.length > 0
+      ? Object.keys(data[0]).filter((col) =>
+          data.some((row) => {
+            const v = row[col];
+            if (v === null || v === undefined || v === '') return false;
+            if (Array.isArray(v)) return v.length > 0;
+            if (typeof v === 'object') return Object.keys(v).length > 0;
+            return true;
+          })
+        )
+      : [];
 
   if (!mounted) {
     return null;

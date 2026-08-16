@@ -16,6 +16,9 @@
 const nextConfig = {
   reactStrictMode: true,
   compress: true,
+  // Directorio de build separado: el dev server (3000) usa .next y el de producción .next-prod,
+  // para que no se pisen entre sí (causa de chunks corruptos / ChunkLoadError).
+  distDir: process.env.NEXT_DIST_DIR === 'prod' ? '.next-prod' : '.next',
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
