@@ -4,14 +4,18 @@
  * ==============================================================================
  * Descripción:
  *  Renderiza el diagrama de un workflow de n8n: nodos (caja con nombre y tipo)
- *  y conexiones (flechas) a partir del JSON de la API de n8n. Cada nodo se
- *  coloca según su posición original, escalada para caber en el panel.
+ *  y conexiones (flechas) a partir del JSON de la API de n8n.
+ *
+ *  Interactividad:
+ *  - Las tarjetas (nodos) se pueden ARRASTRAR con el ratón para recolocarlas
+ *    dentro del panel (estado local, sin persistir en n8n).
  * ==============================================================================
  */
 
 'use client';
 
-import { ArrowLeft, Workflow, Bot, Webhook, Zap, Mail, Phone, CalendarDays, GitBranch, Filter, BrainCircuit, Database, MessageSquare } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { ArrowLeft, Workflow, Bot, Webhook, Zap, BrainCircuit, GitBranch, MessageSquare, Database, Move } from 'lucide-react';
 
 interface NodeItem {
   id: string;
@@ -73,13 +77,24 @@ function NodeIcon({ kind }: { kind: string }) {
   }
 }
 
+const NODE_W = 190;
+const NODE_H = 52;
+
 export function WorkflowDiagram({ name, nodes, connections, onBack }: WorkflowDiagramProps) {
+  // Posiciones locales (editables con drag); se inicializan desde n8n
+  const [nodePos, setNodePos] = useState<Record<string, [number, number]>>(() =>
+    Object.fromEntries(nodes.map((n) => [n.id, n.position ?? [0, 0]]))
+  );
+  const [dragging, setDragging] = useState<string | null>(null);
+  const dragRef = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const scaleRef = useRef(1);
+
   if (nodes.length === 0) {
     return <p className="text-slate-400 text-sm p-4">Este workflow no tiene nodos.</p>;
   }
 
-  // Escalar posiciones para que quepan en el panel (ancho objetivo ~860px)
-  const positions = nodes.map((n) => n.position ?? [0, 0]);
+  // Escala para que quepan en el panel
+  const positions = nodes.map((n) => nodePos[n.id] ?? [0, 0]);
   const minX = Math.min(...positions.map((p) => p[0]));
   const minY = Math.min(...positions.map((p) => p[1]));
   const maxX = Math.max(...positions.map((p) => p[0]));
@@ -87,9 +102,11 @@ export function WorkflowDiagram({ name, nodes, connections, onBack }: WorkflowDi
   const scaleX = 860 / Math.max(maxX - minX + 320, 400);
   const scaleY = 520 / Math.max(maxY - minY + 200, 300);
   const scale = Math.min(scaleX, scaleY, 1.4);
+  scaleRef.current = scale;
+
   const byName = new Map(nodes.map((n) => [n.name, n]));
 
-  // Colección de aristas (source -> target)
+  // Aristas (source -> target)
   const edges: Array<[string, string]> = [];
   for (const [src, conns] of Object.entries(connections)) {
     for (const list of Object.values(conns)) {
@@ -106,8 +123,27 @@ export function WorkflowDiagram({ name, nodes, connections, onBack }: WorkflowDi
     40 + (p[1] - minY) * scale,
   ];
 
-  const NODE_W = 190;
-  const NODE_H = 52;
+  // --- Drag & drop ----------------------------------------------------------
+  const onPointerDown = (e: React.PointerEvent, node: NodeItem) => {
+    const nodeEl = e.currentTarget as HTMLElement;
+    nodeEl.setPointerCapture(e.pointerId);
+    const orig = nodePos[node.id] ?? [0, 0];
+    dragRef.current = { id: node.id, startX: e.clientX, startY: e.clientY, origX: orig[0], origY: orig[1] };
+    setDragging(node.id);
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const dx = (e.clientX - drag.startX) / scaleRef.current;
+    const dy = (e.clientY - drag.startY) / scaleRef.current;
+    setNodePos((prev) => ({ ...prev, [drag.id]: [drag.origX + dx, drag.origY + dy] }));
+  };
+
+  const onPointerUp = () => {
+    dragRef.current = null;
+    setDragging(null);
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -122,17 +158,21 @@ export function WorkflowDiagram({ name, nodes, connections, onBack }: WorkflowDi
         </button>
         <h3 className="text-lg font-bold text-white truncate">{name}</h3>
         <span className="text-xs text-slate-500">{nodes.length} nodos · {edges.length} conexiones</span>
+        <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 rounded-full px-2.5 py-1">
+          <Move size={12} />
+          Arrastra las tarjetas para moverlas
+        </span>
       </div>
 
-      <div className="relative flex-1 min-h-[420px] rounded-xl bg-slate-950/70 border border-slate-800 overflow-auto">
+      <div className="relative flex-1 min-h-[420px] rounded-xl bg-slate-950/70 border border-slate-800 overflow-auto select-none">
         {/* Líneas de conexión */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none" width="100%" height="100%">
           {edges.map(([src, tgt], i) => {
             const s = byName.get(src);
             const t = byName.get(tgt);
             if (!s || !t) return null;
-            const [x1, y1] = scaled(s.position ?? [0, 0]);
-            const [x2, y2] = scaled(t.position ?? [0, 0]);
+            const [x1, y1] = scaled(nodePos[s.id] ?? [0, 0]);
+            const [x2, y2] = scaled(nodePos[t.id] ?? [0, 0]);
             const sx = x1 + NODE_W;
             const sy = y1 + NODE_H / 2;
             const tx = x2;
@@ -151,13 +191,19 @@ export function WorkflowDiagram({ name, nodes, connections, onBack }: WorkflowDi
         {nodes.map((n) => {
           const kind = nodeKind(n.type);
           const style = kindStyles[kind];
-          const [x, y] = scaled(n.position ?? [0, 0]);
+          const [x, y] = scaled(nodePos[n.id] ?? [0, 0]);
+          const isDragging = dragging === n.id;
           return (
             <div
               key={n.id}
-              className={`absolute flex items-center gap-2.5 px-3 py-2 rounded-xl border ${style.bg} ${style.border} shadow-lg`}
+              onPointerDown={(e) => onPointerDown(e, n)}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              className={`absolute flex items-center gap-2.5 px-3 py-2 rounded-xl border shadow-lg cursor-grab active:cursor-grabbing touch-none ${
+                isDragging ? 'ring-2 ring-emerald-400/60 z-10 opacity-95' : 'hover:border-emerald-400/60'
+              } ${style.bg} ${style.border}`}
               style={{ left: x, top: y, width: NODE_W, minHeight: NODE_H }}
-              title={n.type}
+              title={`${n.type} — arrastra para mover`}
             >
               <span className={`shrink-0 ${style.icon}`}>
                 <NodeIcon kind={kind} />
