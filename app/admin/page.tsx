@@ -377,52 +377,16 @@ export default function AdminDashboardPage() {
             </div>
           </section>
         ) : (
-          /* Tabla de Leads Recientes */
-          <section className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+          /* Prospectos: tabla real de leads_agencialquimia (Supabase Cloud) */
+          <section className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <Database className="w-5 h-5 text-emerald-400" />
-                <span>Últimos Leads (Transferidos)</span>
+                <span>Prospectos (Leads)</span>
               </h2>
-              <span className="text-xs text-slate-400">Actualizado automáticamente</span>
+              <span className="text-xs text-slate-400">Datos en vivo de Supabase · leads_agencialquimia</span>
             </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-300">
-                <thead className="bg-slate-950 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
-                  <tr>
-                    <th className="p-4">Nombre</th>
-                    <th className="p-4">Sector</th>
-                    <th className="p-4">Contacto</th>
-                    <th className="p-4">Estado</th>
-                    <th className="p-4">Fecha</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {leads.map((lead) => (
-                    <tr key={lead.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="p-4 font-semibold text-white">{lead.nombre}</td>
-                      <td className="p-4">{lead.sector}</td>
-                      <td className="p-4 font-mono text-xs text-slate-400">{lead.contacto}</td>
-                      <td className="p-4">
-                        <span
-                          className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
-                            lead.estado === 'Finalizado'
-                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                              : lead.estado === 'Enviado a IA'
-                              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                              : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                          }`}
-                        >
-                          {lead.estado}
-                        </span>
-                      </td>
-                      <td className="p-4 text-xs text-slate-400">{lead.fecha}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable initialTable="leads_agencialquimia" />
           </section>
         )}
       </main>
