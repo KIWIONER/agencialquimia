@@ -20,7 +20,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Users, Bot, TrendingUp, Shield, Settings, LayoutDashboard, Database, UserCheck, FolderGit2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Users, Bot, TrendingUp, Shield, Settings, LayoutDashboard, Database, UserCheck, FolderGit2, LogOut, Bell } from 'lucide-react';
 import { DataTable } from '../../components/admin/DataTable';
 
 interface LeadItem {
@@ -33,7 +34,9 @@ interface LeadItem {
 }
 
 export default function AdminDashboardPage() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [notifications, setNotifications] = useState(true);
 
   // Estado local para los prospectos/leads recibidos
   const [leads] = useState<LeadItem[]>([
@@ -48,6 +51,16 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/admin/logout', { method: 'POST' });
+      router.push('/admin/login');
+      router.refresh();
+    } catch (e) {
+      console.error('Logout failed', e);
+    }
+  };
 
   if (!mounted) {
     return (
@@ -205,6 +218,55 @@ export default function AdminDashboardPage() {
         {/* Renderizado condicional según la pestaña seleccionada */}
         {activeTab === 'supabase' ? (
           <DataTable initialTable="leads" />
+        ) : activeTab === 'settings' ? (
+          <section className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Settings className="w-5 h-5 text-emerald-400" />
+                <span>Configuración de la Cuenta</span>
+              </h2>
+            </div>
+            
+            <div className="space-y-4 max-w-xl">
+              {/* Opción de Notificaciones (Demo) */}
+              <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800/60">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
+                    <Bell className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">Notificaciones por Email</p>
+                    <p className="text-xs text-slate-400">Recibir alertas de nuevos prospectos</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setNotifications(!notifications)}
+                  className={`w-12 h-6 rounded-full transition-colors relative flex items-center px-1 ${notifications ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                >
+                  <div className={`w-4 h-4 rounded-full bg-white transition-transform shadow-sm ${notifications ? 'translate-x-6' : 'translate-x-0'}`} />
+                </button>
+              </div>
+
+              {/* Botón de Cerrar Sesión */}
+              <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800/60">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-red-500/10 rounded-lg text-red-400">
+                    <LogOut className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">Cerrar Sesión</p>
+                    <p className="text-xs text-slate-400">Salir de forma segura del panel</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={handleLogout}
+                  className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium rounded-lg transition-colors border border-red-500/20"
+                >
+                  Cerrar Sesión
+                </button>
+              </div>
+            </div>
+          </section>
         ) : (
           /* Tabla de Leads Recientes */
           <section className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
