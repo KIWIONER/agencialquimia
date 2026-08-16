@@ -31,3 +31,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+
+# Assets legacy sin uso (conservados en disco, fuera de git)
+public/assets/videos/
+public/assets/fonts/
