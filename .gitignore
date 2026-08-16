@@ -19,7 +19,6 @@ dist/
 # Caché de TypeScript
 *.tsbuildinfo
 tsconfig.tsbuildinfo
-next-env.d.ts
 
 # Variables de entorno locales y secretos
 .env.local
