@@ -24,6 +24,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Users, Bot, TrendingUp, Shield, Settings, LayoutDashboard, Database, UserCheck, FolderGit2, LogOut, Bell, Send, ExternalLink, Workflow } from 'lucide-react';
 import { DataTable } from '../../components/admin/DataTable';
+import { N8nWorkflows } from '../../components/admin/N8nWorkflows';
 
 interface LeadItem {
   id: string;
@@ -273,29 +274,7 @@ export default function AdminDashboardPage() {
         {activeTab === 'supabase' ? (
           <DataTable initialTable="leads" />
         ) : activeTab === 'n8n' ? (
-          <section className="h-[78vh] flex flex-col rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-950">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Workflow className="w-5 h-5 text-emerald-400" />
-                <span>n8n — Cerebro de automatización</span>
-              </h2>
-              <a
-                href="https://cerebro.agencialquimia.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-500 transition-colors"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Abrir en pestaña nueva
-              </a>
-            </div>
-            <iframe
-              src="https://cerebro.agencialquimia.com"
-              className="w-full flex-1 border-0 bg-white"
-              title="n8n — Workflows en tiempo real"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-            />
-          </section>
+          <N8nWorkflows />
         ) : activeTab === 'trainer' ? (
           <section className="h-[70vh] flex flex-col rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-950">
