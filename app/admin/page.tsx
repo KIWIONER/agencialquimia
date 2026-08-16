@@ -46,9 +46,10 @@ export default function AdminDashboardPage() {
   
   type ChatMessage = { role: 'user' | 'ai', text: string };
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { role: 'ai', text: 'Hola, soy tu asistente OpenClaw. ¿En qué te puedo ayudar hoy con el entrenamiento de los agentes?' }
+    { role: 'ai', text: 'Hola 👋 Soy el asistente IA de AgenciAlquimia. ¿En qué te ayudo?' },
   ]);
   const [chatLoading, setChatLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string>(() => `panel_${Date.now()}`);
 
   // Estado local para los prospectos/leads recibidos
   const [leads] = useState<LeadItem[]>([
@@ -75,20 +76,39 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatInput.trim()) return;
+    if (!chatInput.trim() || chatLoading) return;
 
     const newUserMsg: ChatMessage = { role: 'user', text: chatInput };
     setChatMessages((prev: ChatMessage[]) => [...prev, newUserMsg]);
     setChatInput('');
     setChatLoading(true);
 
-    // Simular respuesta de OpenClaw (aquí podrías conectar a /api/chat)
-    setTimeout(() => {
-      setChatMessages((prev: ChatMessage[]) => [...prev, { role: 'ai', text: 'Procesando tu petición a través del motor OpenClaw...' }]);
+    try {
+      // Chat real con el agente (webhook de n8n vía proxy admin)
+      const res = await fetch('/api/admin/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatInput: newUserMsg.text, sessionId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? 'Error');
+      setChatMessages((prev: ChatMessage[]) => [...prev, { role: 'ai', text: data.response }]);
+    } catch (err) {
+      setChatMessages((prev: ChatMessage[]) => [
+        ...prev,
+        { role: 'ai', text: `⚠️ Error al contactar con el agente: ${err instanceof Error ? err.message : 'desconocido'}` },
+      ]);
+    } finally {
       setChatLoading(false);
-    }, 1500);
+    }
+  };
+
+  // Reinicia la conversación con un sessionId nuevo (el agente olvida el hilo)
+  const nuevaConversacion = () => {
+    setSessionId(`panel_${Date.now()}`);
+    setChatMessages([{ role: 'ai', text: 'Hola 👋 Soy el asistente IA de AgenciAlquimia. ¿En qué te ayudo?' }]);
   };
 
   if (!mounted) {
@@ -282,18 +302,27 @@ export default function AdminDashboardPage() {
             <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-950">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <Bot className="w-5 h-5 text-emerald-400" />
-                <span>OpenClaw IA Trainer</span>
+                <span>IA Trainer · Chat con el agente</span>
               </h2>
-              <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                Online
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={nuevaConversacion}
+                  className="px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+                >
+                  ✨ Nueva conversación
+                </button>
+                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  Agente Online
+                </span>
+              </div>
             </div>
             
             <div className="flex-1 p-6 overflow-y-auto space-y-4 flex flex-col">
               {chatMessages.map((msg: ChatMessage, i: number) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[80%] rounded-2xl p-4 ${msg.role === 'user' ? 'bg-emerald-600 text-white rounded-br-none' : 'bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700'}`}>
-                    <p className="text-sm">{msg.text}</p>
+                    <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                   </div>
                 </div>
               ))}
@@ -316,7 +345,7 @@ export default function AdminDashboardPage() {
                   type="text"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Escribe un mensaje para OpenClaw..."
+                  placeholder="Escribe un mensaje para el agente..."
                   className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
                 />
                 <button

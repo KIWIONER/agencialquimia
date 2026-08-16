@@ -1,18 +1,19 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
+  "/api/admin/leads/[id]/route": "app/api/admin/leads/[id]/route.js",
   "/api/admin/login/route": "app/api/admin/login/route.js",
+  "/api/chat/route": "app/api/chat/route.js",
   "/robots.txt/route": "app/robots.txt/route.js",
   "/sitemap.xml/route": "app/sitemap.xml/route.js",
-  "/api/admin/leads/[id]/route": "app/api/admin/leads/[id]/route.js",
-  "/api/admin/logout/route": "app/api/admin/logout/route.js",
   "/api/admin/data/route": "app/api/admin/data/route.js",
+  "/api/admin/chat/route": "app/api/admin/chat/route.js",
   "/api/admin/n8n/route": "app/api/admin/n8n/route.js",
-  "/api/chat/route": "app/api/chat/route.js",
   "/api/admin/tables/route": "app/api/admin/tables/route.js",
+  "/api/admin/logout/route": "app/api/admin/logout/route.js",
   "/api/admin/n8n/[id]/route": "app/api/admin/n8n/[id]/route.js",
   "/admin/page": "app/admin/page.js",
-  "/admin/login/page": "app/admin/login/page.js",
   "/aviso-legal/page": "app/aviso-legal/page.js",
-  "/page": "app/page.js",
-  "/politica-de-privacidad/page": "app/politica-de-privacidad/page.js"
+  "/admin/login/page": "app/admin/login/page.js",
+  "/politica-de-privacidad/page": "app/politica-de-privacidad/page.js",
+  "/page": "app/page.js"
 }
