@@ -119,11 +119,18 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       }
     }
 
-    // 3. Guardar de vuelta en n8n
+    // 3. Guardar en n8n con PUT, enviando SOLO los campos editables
+    //    (la API rechaza propiedades extra como meta/staticData/shared)
+    const body = {
+      name: wf.name,
+      nodes: wf.nodes,
+      connections: wf.connections,
+      settings: wf.settings,
+    };
     const putRes = await n8nFetch(apiUrl, apiKey, `/workflows/${encodeURIComponent(id)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(wf),
+      body: JSON.stringify(body),
     });
     if (!putRes.ok) throw new Error(`n8n PUT respondió ${putRes.status}`);
 
