@@ -23,10 +23,10 @@ description: >-
 ```
 [Schedule 12:00 + Webhook hunter-ops] → get querys → Random picker → Refinar Query Táctica 🎯
   → Google Trends Radar → Inteligencia elite → Serper (Radar) → Gemini 2.5 Flash1
-  → Extractor de Leads1 → Enriquecer Contacto 🕸️ → Supabase (Postgres)1 [UPSERT objetivos_agencia]
+  → Extractor de Leads1 → Filtrar sin URL → Descargar Web 🕸️ (HTTP Request) → Enriquecer Contacto 🕸️ → Supabase (Postgres)1 [UPSERT objetivos_agencia]
 ```
 
-- **Workflow n8n:** `hunterops-alquimia`, id `8oKH48VIOr66YIQb` — **ACTIVO, 14 nodos**.
+- **Workflow n8n:** `hunterops-alquimia`, id `8oKH48VIOr66YIQb` — **ACTIVO, 16 nodos** (desde 17-ago 02:00).
   (cerebro.agencialquimia.com, instancia principal n8n de Coolify).
 - **Panel admin:** pestaña "Hunter" → `components/admin/HunterMap.tsx` (Leaflet + OSM, sin API key).
 - **API:** `app/api/admin/hunter/route.ts` → GET lista + POST acciones (`radar`, `geocode`, `generar-mensaje`).
@@ -47,8 +47,10 @@ description: >-
 | 8 | `Serper (Radar)` | httpRequest | POST `https://google.serper.dev/search` con `{q, gl:'es', hl:'es'}` + header `X-API-KEY` (Serper, secreto en el nodo) |
 | 9 | `Gemini 2.5 Flash1` | httpRequest | POST Gemini `generateContent` (key AIza… en el nodo, secreto). Prompt: analiza `organic[{title, link}]` del Serper y devuelve SOLO JSON `[{negocio, fallo_detectado, potencial_venta, url}]` |
 | 10 | `Extractor de Leads1` | code | Parsea el JSON de Gemini, limpia ```` ```json ````, filtra degenerados (`Escáner`, `análisis no realizado`, `n/a`, `no especificado`, `sin datos`), mapea a `{negocio, fallo_detectado, potencial_venta, url, sector}`. **Si Gemini devuelve `[]` → no produce items → el flujo acaba sin insertar** (comportamiento esperado cuando la query no da negocios válidos). |
-| 11 | **`Enriquecer Contacto 🕸️`** | code | **NUEVO (17-ago).** Por cada item: `fetch` de `url` real (UA Chrome, timeout 8s con AbortController), extrae emails con regex y teléfonos españoles (de `tel:` links y texto), filtra falsos, prioriza móvil → fijo gallego → resto, y **solo rellena si Gemini no trajo** (`item.json.email || scraped`). Web inaccesible → deja NULL (no inventa). |
-| 12 | `Supabase (Postgres)1` | postgres | **UPSERT** en `objetivos_agencia` con matching por `negocio`; escribe `negocio, fallo_detectado, potencial_venta, url, sector` **+ `email, telefono`** (añadidos 17-ago — antes el mapeo no los incluía y los contactos solo se rellenaban manualmente) |
+| 11 | **`Filtrar sin URL`** | code | Filtra items sin `url` válida (http/https) — evita el error "Invalid URL" del HTTP Request cuando Gemini emite un negocio sin enlace. |
+| 12 | **`Descargar Web 🕸️`** | httpRequest | **NUEVO (17-ago).** GET de `{{ $json.url }}` (UA Chrome, timeout 8s, `neverError`). El HTML llega en la clave **`data`** (responseFormat text en typeVersion 4.2), NO `body`. El json del item se machaca — el Enriquecer recupera el original con `$('Extractor de Leads1')`. |
+| 13 | **`Enriquecer Contacto 🕸️`** | code | Parsea el HTML recibido: extrae emails con regex y teléfonos españoles (de `tel:` links y texto), filtra falsos, prioriza móvil → fijo gallego → resto, y **solo rellena si Gemini no trajo** (`orig.email || scraped`). Limpia escapes unicode literales del HTML (p.ej. `u00a0xestiona@…` → `xestiona@…`). Web inaccesible → deja NULL (no inventa). |
+| 14 | `Supabase (Postgres)1` | postgres | **UPSERT** en `objetivos_agencia` con matching por `negocio`; escribe `negocio, fallo_detectado, potencial_venta, url, sector` **+ `email, telefono`** (añadidos 17-ago — antes el mapeo no los incluía y los contactos solo se rellenaban manualmente) |
 
 > ⚠️ **Nodos huérfanos (NO conectados al flujo, no tocar):** `Selector de Diana1` (lista estática de búsquedas antigua) y `Edit Fields1` (set de campos que ya hace el Extractor). El flujo real va `Extractor de Leads1 → Enriquecer Contacto 🕸️ → Supabase (Postgres)1`.
 
@@ -155,8 +157,9 @@ Panel Hunter → clic en negocio (drawer lateral z-[1200]) → "Generar mensaje 
 3. **PUT a n8n**: body solo `{name, nodes, connections, settings}` con `settings: {executionOrder: 'v1'}`; sin `id`/`active`; **backup JSON SIEMPRE antes**; nodos Code sin `webhookId` (si no, PUT falla con `request/body/nodes/N/webhookId must be string`). ⚠️ **el helper `n8n-api.sh` NO sirve para PUT con JSON que contenga emojis/unicode** (falla "Failed to parse request body") → usar `curl --data-binary @archivo` directo con la key.
 4. **Geocode en rutas síncronas**: lotes pequeños (15+15 ≈ 2-17s); sin `sleep` entre queries; `AbortSignal.timeout(6000)`.
 5. **Radar crea basura si la query es mala** → filtro en Extractor + queries en `radar_queries` revisadas. `site:google.com/maps` da pocos orgánicos (candidato a revisión).
-6. **Serper key vive en el nodo Serper del workflow** (secreto, no versionar). Gemini key en el nodo Gemini (secreto, no versionar). Las credenciales n8n están en `/root/.openclaw/workspace/notes/` (600).
-7. Los **5 commits Hunter** (`7856e3d, 562fc2e, fd4be35, 0418822` + contacto) se subieron a GitHub el 17-ago **sin redeploy** (auto-deploy de Coolify desactivado temporalmente en `application_settings.is_auto_deploy_enabled`). La web en producción sigue en el commit anterior hasta que se despliegue.
+6. **⚠️ EL SANDBOX DEL CODE NODE DE n8n NO TIENE `fetch` NI `AbortController` NI MÓDULOS BUILTIN** (`require('https')` da "Module 'https' is disallowed"). Cualquier código que haga HTTP con `fetch()` falla silenciosamente (el catch vacío traga el error y deja NULL). **Solución: usar el nodo HTTP Request nativo** (Descargar Web 🕸️) + Code que parsea el HTML. Trampas del HTTP Request v4.2: el HTML llega en la clave **`data`** (no `body`), y **machaca el json del item** (recuperar el original con `$('Extractor de Leads1').all()` en el nodo siguiente). Para depurar errores silenciosos de un nodo Code: exponer el error en el output (`resultsDebug.push({url, error})`) en vez del catch vacío.
+7. **Serper key vive en el nodo Serper del workflow** (secreto, no versionar). Gemini key en el nodo Gemini (secreto, no versionar). Las credenciales n8n están en `/root/.openclaw/workspace/notes/` (600).
+8. Los **5 commits Hunter** (`7856e3d, 562fc2e, fd4be35, 0418822` + contacto) se subieron a GitHub el 17-ago **sin redeploy** (auto-deploy de Coolify desactivado temporalmente en `application_settings.is_auto_deploy_enabled`). La web en producción sigue en el commit anterior hasta que se despliegue.
 
 ## Archivos clave
 
