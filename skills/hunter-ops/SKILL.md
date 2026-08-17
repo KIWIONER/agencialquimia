@@ -86,6 +86,7 @@ Estados `estado_caza`: `pendiente → contactado → en conversacion → ganado 
 - `{action:'radar'}` → POST al webhook n8n `hunter-ops` `{trigger:'manual', source:'panel-admin'}`. Timeout 30s. El radar tarda **unos minutos** (Serper + Gemini + fetch de webs).
 - `{action:'geocode'}` → geocodifica lotes de 15 objetivos + 15 leads sin coords (Photon bbox Galicia primero → Nominatim solo si Photon falla). Timeout por query 6s, sin `sleep`. Actualiza `lat/lon/comunidad/ciudad`.
 - `{action:'generar-mensaje', tipo:'whatsapp'|'email', negocio:{...}}` → manda el contexto del negocio al webhook `max-panel` (Max, mismo cerebro que el chat) con prompt de venta (WhatsApp ≤120 palabras / email ≤180 con asunto). Timeout 90s. Devuelve `{ok, tipo, response}`.
+- **Gestión de queries** (17-ago): `{action:'crear-query', query, sector?, geo?, plataforma?, activo?}` / `{action:'actualizar-query', id, ...}` / `{action:'eliminar-query', id}`. `plataforma` se valida contra `['LinkedIn','Social Media','Google My Business','Google Search']`. **El GET devuelve TODAS las queries (activas e inactivas)**; el workflow solo usa `activo = true`. ⚠️ **`radar_queries.query` tiene constraint UNIQUE** — no se pueden crear dos queries iguales (error 23505).
 
 ## Reglas de geocodificación (críticas, aprendidas con errores reales)
 
@@ -115,6 +116,11 @@ TOKEN=$(node --experimental-strip-types /tmp/gen-token.mjs | tail -1)
 curl -s -X POST -H "Cookie: admin_session=$TOKEN" -H 'Content-Type: application/json' \
   -d '{"action":"radar"}' http://localhost:3100/api/admin/hunter
 ```
+
+### Gestionar queries del radar (panel)
+Sección "Queries del radar" en la pestaña Hunter: `+ Añadir query` (query, sector, geo, plataforma, activo), edición inline por fila (✏️), pausar/activar (⏸/▶), eliminar (🗑 con confirm). Equivalentes API: `crear-query` / `actualizar-query` / `eliminar-query`.
+
+⚠️ **Grants necesarios en Supabase**: `panel_web` necesita `INSERT, UPDATE, DELETE` en `radar_queries` (solo tenía SELECT; sin ellos el POST da 500 "Error al gestionar la query"). Aplicado 17-ago.
 
 ### Ver si el radar ejecutó bien
 ```bash
