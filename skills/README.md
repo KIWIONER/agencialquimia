@@ -34,6 +34,7 @@ Instrucciones detalladas, pasos, ejemplos y comandos.
 | Skill | Descripción |
 | :--- | :--- |
 | `supabase-admin-tables` | Renderizar tablas de Supabase en el panel admin (/admin) — descubrimiento vía OpenAPI, fetch server-side y tabla genérica. Incluye ejemplos (`examples/`). |
+| `hunter-ops` | Operar el Radar Hunter (workflow n8n hunterops-alquimia, tablas objetivos_agencia/leads_hunter/radar_queries, API /api/admin/hunter y mapa del panel): activar/depurar capturas, geocodificar, completar contactos y generar mensajes con Max. |
 
 ## Candidatas sugeridas
 
