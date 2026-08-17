@@ -21,13 +21,24 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { Users, Bot, TrendingUp, Shield, Settings, LayoutDashboard, Database, UserCheck, FolderGit2, LogOut, Bell, Send, ExternalLink, Workflow, MessageSquare } from 'lucide-react';
+import { Users, Bot, TrendingUp, Shield, Settings, LayoutDashboard, Database, UserCheck, FolderGit2, LogOut, Bell, Send, ExternalLink, Workflow, MessageSquare, Crosshair } from 'lucide-react';
 import { DataTable } from '../../components/admin/DataTable';
 import LeadPipeline from '../../components/admin/LeadPipeline';
 import MaxChat from '../../components/admin/MaxChat';
 import ClientInbox from '../../components/admin/ClientInbox';
 import { N8nWorkflows } from '../../components/admin/N8nWorkflows';
+
+// Leaflet accede a `window` → solo se carga en cliente (evita fallo de prerender)
+const HunterMap = dynamic(() => import('../../components/admin/HunterMap').then((m) => m.HunterMap), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-400 text-sm">
+      Cargando mapa…
+    </div>
+  ),
+});
 
 interface LeadItem {
   id: string;
@@ -61,7 +72,7 @@ export default function AdminDashboardPage() {
     { id: '4', nombre: 'Elena Blanco', sector: 'Salud', contacto: '+34 604 555 888', estado: 'Enviado a IA', fecha: 'Hace 2 horas' },
   ]);
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'supabase' | 'n8n' | 'trainer' | 'inbox' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'supabase' | 'n8n' | 'trainer' | 'inbox' | 'hunter' | 'settings'>('dashboard');
   const [prospectosView, setProspectosView] = useState<'pipeline' | 'tabla'>('pipeline');
 
   useEffect(() => {
@@ -216,6 +227,18 @@ export default function AdminDashboardPage() {
             </button>
             <button
               type="button"
+              onClick={() => setActiveTab('hunter')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
+                activeTab === 'hunter'
+                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+            >
+              <Crosshair className="w-5 h-5" />
+              <span>Hunter (Radar)</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTab('trainer')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
                 activeTab === 'trainer'
@@ -268,14 +291,18 @@ export default function AdminDashboardPage() {
                 ? 'Tablas de Supabase'
                 : activeTab === 'n8n'
                   ? 'Workflows n8n'
-                  : 'Dashboard General'}
+                  : activeTab === 'hunter'
+                    ? 'Hunter (Radar)'
+                    : 'Dashboard General'}
             </h1>
             <p className="text-slate-400 text-sm mt-1">
               {activeTab === 'supabase'
                 ? 'Explorador y Gestión de carpetas / tablas de la Base de Datos'
                 : activeTab === 'n8n'
                   ? 'Acceso en tiempo real al cerebro de automatización (cerebro.agencialquimia.com)'
-                  : 'Control Center y Monitoreo de Leads en Tiempo Real'}
+                  : activeTab === 'hunter'
+                    ? 'Activa el radar y visualiza en el mapa dónde están los negocios a los que apunta'
+                    : 'Control Center y Monitoreo de Leads en Tiempo Real'}
             </p>
           </div>
           <div className="px-4 py-2 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-400 text-xs font-semibold flex items-center gap-2">
@@ -320,6 +347,8 @@ export default function AdminDashboardPage() {
           <N8nWorkflows />
         ) : activeTab === 'inbox' ? (
           <ClientInbox />
+        ) : activeTab === 'hunter' ? (
+          <HunterMap />
         ) : activeTab === 'trainer' ? (
           <MaxChat />
         ) : activeTab === 'settings' ? (

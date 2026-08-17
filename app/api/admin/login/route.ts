@@ -18,6 +18,7 @@ import { createAdminToken } from '@/lib/auth';
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
+    console.error('[login] paso 1: body recibido, email=', email);
 
     if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
       return NextResponse.json(
@@ -82,14 +83,15 @@ export async function POST(request: Request) {
       }
     }
 
-    // Si ninguna validación tuvo éxito
     if (!authenticatedUser) {
+      console.error('[login] paso 2: no autenticado por Supabase ni env');
       return NextResponse.json(
         { success: false, error: 'Credenciales incorrectas' },
         { status: 401 }
       );
     }
 
+    console.error('[login] paso 3: generando token para', authenticatedUser.email);
     // 3. Credenciales válidas → Generar JWT + cookie httpOnly
     const token = await createAdminToken({
       email: authenticatedUser.email,
@@ -109,7 +111,8 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (e) {
+    console.error('[login] error interno:', e);
     return NextResponse.json(
       { success: false, error: 'Error interno del servidor' },
       { status: 500 }
