@@ -25,6 +25,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Users, Bot, TrendingUp, Shield, Settings, LayoutDashboard, Database, UserCheck, FolderGit2, LogOut, Bell, Send, ExternalLink, Workflow, MessageSquare, Crosshair } from 'lucide-react';
 import { DataTable } from '../../components/admin/DataTable';
+import { DashboardSummary, type AdminTab } from '../../components/admin/DashboardSummary';
 import LeadPipeline from '../../components/admin/LeadPipeline';
 import MaxChat from '../../components/admin/MaxChat';
 import ClientInbox from '../../components/admin/ClientInbox';
@@ -72,7 +73,7 @@ export default function AdminDashboardPage() {
     { id: '4', nombre: 'Elena Blanco', sector: 'Salud', contacto: '+34 604 555 888', estado: 'Enviado a IA', fecha: 'Hace 2 horas' },
   ]);
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'leads' | 'supabase' | 'n8n' | 'trainer' | 'inbox' | 'hunter' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [prospectosView, setProspectosView] = useState<'pipeline' | 'tabla'>('pipeline');
 
   useEffect(() => {
@@ -312,7 +313,9 @@ export default function AdminDashboardPage() {
         </header>
 
         {/* Grid de Métricas Principales */}
-        {activeTab !== 'supabase' && activeTab !== 'n8n' && (
+        {activeTab === 'dashboard' ? (
+          <DashboardSummary onNavigate={setActiveTab} />
+        ) : activeTab !== 'supabase' && activeTab !== 'n8n' && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
               <div className="flex items-center justify-between text-slate-400">
