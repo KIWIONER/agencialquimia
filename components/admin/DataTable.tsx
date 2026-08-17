@@ -7,20 +7,115 @@
  * Descripción:
  *  Componente explorador y visualizador dinámico de las 11 tablas de Supabase
  *  para el panel de administración de AgenciAlquimia.
- * 
+ *
  * Funcionalidades:
  *  - Menú desplegable (Dropdown) personalizado para seleccionar entre las 11 tablas.
  *  - Auto-detección dinámica de columnas a partir de los registros.
- *  - Renderizado inteligente con badges para estados.
+ *  - Detección de tipo por columna (fecha, número, booleano, JSON, texto) con iconos.
+ *  - Renderizado inteligente: fechas legibles, chips para booleanos, badges de estado.
+ *  - Búsqueda en vivo sobre todos los campos + contador de registros.
+ *  - Cabecera fija (sticky) con scroll vertical, filas zebra y hover.
  *  - Estado de carga, refresco manual e indicador de conexión en vivo.
  * ==============================================================================
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Database, RefreshCw, Folder, AlertCircle, CheckCircle2, ChevronRight, ChevronDown, Check } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import {
+  Database,
+  RefreshCw,
+  Folder,
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  ChevronDown,
+  Check,
+  Search,
+  Hash,
+  CalendarDays,
+  ToggleLeft,
+  Braces,
+  Type,
+  X,
+  Rows3,
+  FileJson,
+} from 'lucide-react';
 
 interface DataTableProps {
   initialTable?: string;
+}
+
+type ColType = 'date' | 'number' | 'boolean' | 'json' | 'text';
+
+const TYPE_ICONS: Record<ColType, typeof Type> = {
+  date: CalendarDays,
+  number: Hash,
+  boolean: ToggleLeft,
+  json: Braces,
+  text: Type,
+};
+
+const TYPE_LABELS: Record<ColType, string> = {
+  date: 'fecha',
+  number: 'número',
+  boolean: 'bool',
+  json: 'JSON',
+  text: 'texto',
+};
+
+function detectType(values: unknown[]): ColType {
+  const nonEmpty = values.filter(
+    (v) => v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0),
+  );
+  if (nonEmpty.length === 0) return 'text';
+  const sample = nonEmpty[0];
+  if (typeof sample === 'number') return 'number';
+  if (typeof sample === 'boolean') return 'boolean';
+  if (typeof sample === 'object') return 'json';
+  if (typeof sample === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}T/.test(sample)) return 'date';
+    return 'text';
+  }
+  return 'text';
+}
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString('es-ES', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function stringifyVal(val: unknown): string {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'object') return JSON.stringify(val);
+  return String(val);
+}
+
+function statusBadgeClass(valStr: string): string {
+  const v = valStr.toLowerCase();
+  if (['ganado', 'completado', 'activo', 'completo', 'finalizado', 'ok', 'true', 'si', 'sí'].includes(v)) {
+    return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+  }
+  if (['en conversacion', 'en_conversacion', 'en_proceso', 'enviado', 'enviado a ia', 'contactado', 'procesando', 'pendiente_envio', 'programado'].includes(v)) {
+    return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+  }
+  if (['descartado', 'perdido', 'cancelado', 'error', 'fallo', 'fallido', 'false', 'no'].includes(v)) {
+    return 'bg-rose-500/20 text-rose-400 border-rose-500/30';
+  }
+  if (['pendiente', 'nuevo', 'espera', 'pausado'].includes(v)) {
+    return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+  }
+  return 'bg-slate-500/20 text-slate-300 border-slate-500/30';
+}
+
+function isStatusColumn(col: string): boolean {
+  const c = col.toLowerCase();
+  return c.includes('estado') || c.includes('status') || c.includes('etapa');
 }
 
 export function DataTable({ initialTable = 'leads_agencialquimia' }: DataTableProps) {
@@ -32,6 +127,7 @@ export function DataTable({ initialTable = 'leads_agencialquimia' }: DataTablePr
   const [isFallback, setIsFallback] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
+  const [query, setQuery] = useState<string>('');
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -68,6 +164,7 @@ export function DataTable({ initialTable = 'leads_agencialquimia' }: DataTablePr
   const fetchTableData = useCallback(async (tableName: string) => {
     setLoading(true);
     setErrorMessage(null);
+    setQuery('');
     try {
       const res = await fetch(`/api/admin/data?table=${encodeURIComponent(tableName)}`);
       const json = await res.json();
@@ -102,18 +199,32 @@ export function DataTable({ initialTable = 'leads_agencialquimia' }: DataTablePr
   }, [mounted, selectedTable, fetchTableData]);
 
   // Solo mostrar columnas que tengan contenido en al menos una fila
-  const columns =
-    data.length > 0
-      ? Object.keys(data[0]).filter((col) =>
-          data.some((row) => {
-            const v = row[col];
-            if (v === null || v === undefined || v === '') return false;
-            if (Array.isArray(v)) return v.length > 0;
-            if (typeof v === 'object') return Object.keys(v).length > 0;
-            return true;
-          })
-        )
-      : [];
+  const columns = useMemo(() => {
+    if (data.length === 0) return [] as string[];
+    return Object.keys(data[0]).filter((col) =>
+      data.some((row) => {
+        const v = row[col];
+        if (v === null || v === undefined || v === '') return false;
+        if (Array.isArray(v)) return v.length > 0;
+        if (typeof v === 'object') return Object.keys(v).length > 0;
+        return true;
+      }),
+    );
+  }, [data]);
+
+  const colTypes = useMemo(() => {
+    const map: Record<string, ColType> = {};
+    for (const col of columns) {
+      map[col] = detectType(data.map((row) => row[col]));
+    }
+    return map;
+  }, [columns, data]);
+
+  const filteredRows = useMemo(() => {
+    if (!query.trim()) return data;
+    const q = query.toLowerCase();
+    return data.filter((row) => JSON.stringify(row).toLowerCase().includes(q));
+  }, [data, query]);
 
   if (!mounted) {
     return null;
@@ -233,52 +344,179 @@ export function DataTable({ initialTable = 'leads_agencialquimia' }: DataTablePr
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300 border-collapse">
-              <thead className="bg-slate-950 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
-                <tr>
-                  {columns.map((col) => (
-                    <th key={col} className="p-4 font-semibold">
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {data.map((row, idx) => (
-                  <tr key={String(row.id || idx)} className="hover:bg-slate-800/40 transition-colors">
-                    {columns.map((col) => {
-                      const val = row[col];
-                      const valStr = typeof val === 'object' && val !== null ? JSON.stringify(val) : String(val ?? '');
-                      const isStatusCol = col.toLowerCase().includes('estado') || col.toLowerCase().includes('status');
+          <>
+            {/* Barra de herramientas: búsqueda + contador */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={`Buscar en ${selectedTable}...`}
+                  className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50 transition-colors"
+                />
+                {query && (
+                  <button
+                    type="button"
+                    onClick={() => setQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                    aria-label="Limpiar búsqueda"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="flex items-center gap-1.5 text-slate-400">
+                  <Rows3 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="font-mono font-bold text-white">{filteredRows.length}</span>
+                  <span>/ {data.length} registros</span>
+                </span>
+                <span className="flex items-center gap-1.5 text-slate-500">
+                  <FileJson className="w-3.5 h-3.5" />
+                  <span>{columns.length} columnas</span>
+                </span>
+              </div>
+            </div>
 
+            {/* Tabla con cabecera fija y scroll */}
+            <div className="overflow-auto max-h-[62vh] rounded-xl border border-slate-800">
+              <table className="w-full text-left text-sm text-slate-300 border-collapse min-w-max">
+                <thead className="bg-slate-950 text-slate-400 text-xs uppercase tracking-wider sticky top-0 z-10 shadow-[0_1px_0_0_rgba(148,163,184,0.15)]">
+                  <tr>
+                    <th className="p-3 pl-4 w-10 text-center text-slate-600 font-semibold">#</th>
+                    {columns.map((col) => {
+                      const Icon = TYPE_ICONS[colTypes[col]];
                       return (
-                        <td key={col} className="p-4 text-xs font-mono">
-                          {isStatusCol ? (
-                            <span
-                              className={`inline-block px-3 py-1 rounded-full text-[11px] font-sans font-bold ${
-                                valStr === 'Finalizado' || valStr === 'completado' || valStr === 'activo'
-                                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                  : valStr === 'Enviado a IA' || valStr === 'en_proceso'
-                                  ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                                  : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                              }`}
-                            >
-                              {valStr}
+                        <th key={col} className="p-3 font-semibold whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Icon className={`w-3.5 h-3.5 shrink-0 ${col === 'id' ? 'text-emerald-400' : 'text-slate-500'}`} />
+                            <span className={col === 'id' ? 'text-emerald-300' : ''}>{col}</span>
+                            <span className="hidden lg:inline text-[9px] font-bold text-slate-600 bg-slate-800/80 rounded px-1.5 py-0.5 uppercase">
+                              {TYPE_LABELS[colTypes[col]]}
                             </span>
-                          ) : (
-                            <span className={col === 'id' ? 'text-slate-500' : 'text-slate-200'}>
-                              {valStr}
-                            </span>
-                          )}
-                        </td>
+                          </div>
+                        </th>
                       );
                     })}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {filteredRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={columns.length + 1} className="p-10 text-center">
+                        <div className="space-y-2">
+                          <Search className="w-8 h-8 text-slate-600 mx-auto" />
+                          <p className="text-sm text-slate-400">Sin resultados para <span className="font-mono text-emerald-300">&quot;{query}&quot;</span></p>
+                          <p className="text-xs text-slate-600">Prueba con otro término o limpia la búsqueda.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredRows.map((row, idx) => (
+                      <tr key={String(row.id ?? idx)} className={`transition-colors hover:bg-emerald-500/5 ${idx % 2 === 1 ? 'bg-slate-800/20' : ''}`}>
+                        <td className="p-3 pl-4 text-center text-[11px] font-mono text-slate-600">{idx + 1}</td>
+                        {columns.map((col) => {
+                          const val = row[col];
+                          const valStr = stringifyVal(val);
+                          const type = colTypes[col];
+                          const isStatus = isStatusColumn(col);
+
+                          // Celda vacía -> guión tenue
+                          if (valStr === '') {
+                            return (
+                              <td key={col} className="p-3 text-xs font-mono text-slate-700">
+                                —
+                              </td>
+                            );
+                          }
+
+                          // Booleano -> chip
+                          if (type === 'boolean') {
+                            return (
+                              <td key={col} className="p-3">
+                                <span
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                                    val === true
+                                      ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                      : 'bg-slate-700/30 text-slate-400 border-slate-600/40'
+                                  }`}
+                                >
+                                  <ToggleLeft className="w-3 h-3" />
+                                  {val === true ? 'Sí' : 'No'}
+                                </span>
+                              </td>
+                            );
+                          }
+
+                          // Fecha -> formato legible
+                          if (type === 'date') {
+                            return (
+                              <td key={col} className="p-3 text-xs font-mono whitespace-nowrap">
+                                <span className="flex items-center gap-1.5 text-slate-300" title={valStr}>
+                                  <CalendarDays className="w-3 h-3 text-slate-500 shrink-0" />
+                                  {formatDate(valStr)}
+                                </span>
+                              </td>
+                            );
+                          }
+
+                          // JSON -> truncado con tooltip
+                          if (type === 'json') {
+                            const pretty = JSON.stringify(val, null, 2);
+                            return (
+                              <td key={col} className="p-3 text-xs font-mono max-w-[280px]">
+                                <span
+                                  className="block truncate text-indigo-300/90 hover:text-indigo-200 cursor-help"
+                                  title={pretty.length > 500 ? pretty.slice(0, 500) + '\n…' : pretty}
+                                >
+                                  {'{ '}{valStr.slice(0, 80)}{valStr.length > 80 ? '…' : ''}{' }'}
+                                </span>
+                              </td>
+                            );
+                          }
+
+                          // Columna de estado -> badge
+                          if (isStatus) {
+                            return (
+                              <td key={col} className="p-3">
+                                <span className={`inline-block px-3 py-1 rounded-full text-[11px] font-sans font-bold border ${statusBadgeClass(valStr)}`}>
+                                  {valStr}
+                                </span>
+                              </td>
+                            );
+                          }
+
+                          // Número -> tabular
+                          if (type === 'number') {
+                            return (
+                              <td key={col} className="p-3 text-xs font-mono tabular-nums text-slate-200">
+                                {valStr}
+                              </td>
+                            );
+                          }
+
+                          // Texto normal: id tenue, resto con truncado + tooltip
+                          const isId = col === 'id' || /uuid|_id$/.test(col);
+                          return (
+                            <td key={col} className="p-3 text-xs font-mono max-w-[300px]">
+                              <span
+                                className={`block truncate ${isId ? 'text-slate-500' : 'text-slate-200'} hover:text-white`}
+                                title={valStr}
+                              >
+                                {valStr}
+                              </span>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -342,7 +342,7 @@ export default function AdminDashboardPage() {
 
         {/* Renderizado condicional según la pestaña seleccionada */}
         {activeTab === 'supabase' ? (
-          <DataTable initialTable="leads" />
+          <DataTable initialTable="leads_agencialquimia" />
         ) : activeTab === 'n8n' ? (
           <N8nWorkflows />
         ) : activeTab === 'inbox' ? (
