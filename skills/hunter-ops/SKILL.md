@@ -48,7 +48,7 @@ description: >-
 | 9 | `Gemini 2.5 Flash1` | httpRequest | POST Gemini `generateContent` (key AIza… en el nodo, secreto). Prompt: analiza `organic[{title, link}]` del Serper y devuelve SOLO JSON `[{negocio, fallo_detectado, potencial_venta, url}]` |
 | 10 | `Extractor de Leads1` | code | Parsea el JSON de Gemini, limpia ```` ```json ````, filtra degenerados (`Escáner`, `análisis no realizado`, `n/a`, `no especificado`, `sin datos`), mapea a `{negocio, fallo_detectado, potencial_venta, url, sector}`. **Si Gemini devuelve `[]` → no produce items → el flujo acaba sin insertar** (comportamiento esperado cuando la query no da negocios válidos). |
 | 11 | **`Enriquecer Contacto 🕸️`** | code | **NUEVO (17-ago).** Por cada item: `fetch` de `url` real (UA Chrome, timeout 8s con AbortController), extrae emails con regex y teléfonos españoles (de `tel:` links y texto), filtra falsos, prioriza móvil → fijo gallego → resto, y **solo rellena si Gemini no trajo** (`item.json.email || scraped`). Web inaccesible → deja NULL (no inventa). |
-| 12 | `Supabase (Postgres)1` | postgres | **UPSERT** en `objetivos_agencia` con matching por `negocio`; escribe `negocio, fallo_detectado, potencial_venta, url, sector` (+ `email, telefono` vienen en el json pero el mapeo actual de columnas NO los incluye — ver "Contactos" abajo) |
+| 12 | `Supabase (Postgres)1` | postgres | **UPSERT** en `objetivos_agencia` con matching por `negocio`; escribe `negocio, fallo_detectado, potencial_venta, url, sector` **+ `email, telefono`** (añadidos 17-ago — antes el mapeo no los incluía y los contactos solo se rellenaban manualmente) |
 
 > ⚠️ **Nodos huérfanos (NO conectados al flujo, no tocar):** `Selector de Diana1` (lista estática de búsquedas antigua) y `Edit Fields1` (set de campos que ya hace el Extractor). El flujo real va `Extractor de Leads1 → Enriquecer Contacto 🕸️ → Supabase (Postgres)1`.
 
@@ -145,8 +145,8 @@ Panel Hunter → clic en negocio (drawer lateral z-[1200]) → "Generar mensaje 
 ## Lecciones / trampas conocidas
 
 1. **NUNCA DELETE contra producción** (ya pasó con un workflow n8n; recuperado vía heap de Postgres).
-2. **El mapeo de columnas de `Supabase (Postgres)1` no incluye `email`/`telefono`** (se añadió el nodo Enriquecer después). Si el radar captura nuevos objetivos, los contactos NO se escribirán hasta actualizar el nodo Supabase (columns value + schema). Verificado 17-ago: los contactos actuales en BD se rellenaron con script manual, no por el workflow.
-3. **PUT a n8n**: body solo `{name, nodes, connections, settings}` con `settings: {executionOrder: 'v1'}`; sin `id`/`active`; **backup JSON SIEMPRE antes**; nodos Code sin `webhookId` (si no, PUT falla con `request/body/nodes/N/webhookId must be string`).
+2. **El mapeo de columnas de `Supabase (Postgres)1` YA incluye `email`/`telefono`** (actualizado 17-ago 01:23, PUT con `--data-binary @archivo`; backup `wf-hunterops-after-email-node-20260817-0123.json`). El workflow ahora escribe los contactos de Enriquecer Contacto 🕸️ en cada captura nueva.
+3. **PUT a n8n**: body solo `{name, nodes, connections, settings}` con `settings: {executionOrder: 'v1'}`; sin `id`/`active`; **backup JSON SIEMPRE antes**; nodos Code sin `webhookId` (si no, PUT falla con `request/body/nodes/N/webhookId must be string`). ⚠️ **el helper `n8n-api.sh` NO sirve para PUT con JSON que contenga emojis/unicode** (falla "Failed to parse request body") → usar `curl --data-binary @archivo` directo con la key.
 4. **Geocode en rutas síncronas**: lotes pequeños (15+15 ≈ 2-17s); sin `sleep` entre queries; `AbortSignal.timeout(6000)`.
 5. **Radar crea basura si la query es mala** → filtro en Extractor + queries en `radar_queries` revisadas. `site:google.com/maps` da pocos orgánicos (candidato a revisión).
 6. **Serper key vive en el nodo Serper del workflow** (secreto, no versionar). Gemini key en el nodo Gemini (secreto, no versionar). Las credenciales n8n están en `/root/.openclaw/workspace/notes/` (600).
