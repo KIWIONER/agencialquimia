@@ -8,10 +8,13 @@ export const dynamic = 'force-dynamic';
  * Radar Hunter — API del panel admin.
  *
  * GET  /api/admin/hunter → leads cazados (con lat/lon si están geolocalizados)
- *                         + queries activas del radar (campo geo en texto)
+ *                         + queries del radar (activas e inactivas, campo geo en texto)
  * POST /api/admin/hunter { action: 'radar' }   → lanza el radar (webhook hunter-ops)
  * POST /api/admin/hunter { action: 'geocode' } → geocodifica leads sin coordenadas
  *                                                (Nominatim/OSM, máx ~12 por llamada)
+ * POST /api/admin/hunter { action: 'crear-query' }       → añade query al radar
+ * POST /api/admin/hunter { action: 'actualizar-query' }  → edita query (incl. activo)
+ * POST /api/admin/hunter { action: 'eliminar-query' }    → borra query
  *
  * Los leads los genera el workflow n8n "hunterops-alquimia" (webhook hunter-ops,
  * trigger diario 12:00 + manual). Las columnas lat/lon se añadieron en
@@ -88,7 +91,31 @@ interface GeoResult {
 
 // Caja de Galicia para priorizar resultados cuando la ciudad es gallega
 const GALICIA_BBOX = 'bbox=-9.4,41.7,-6.7,43.9';
+
+// Plataformas que entiende el workflow (Refinar Query Táctica 🎯 añade el filtro site:)
+// Google Search no genera filtro site: pero se conserva como etiqueta de canal
+const PLATAFORMAS_VALIDAS = ['LinkedIn', 'Social Media', 'Google My Business', 'Google Search'];
+
 const CIUDADES_GALLEGAS = ['santiago de compostela', 'a coruña', 'la coruña', 'vigo', 'ourense', 'orense', 'lugo', 'pontevedra', 'ferrol', 'santiago'];
+
+function normalizarPlataformas(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((p): p is string => typeof p === 'string' && PLATAFORMAS_VALIDAS.includes(p));
+  }
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return normalizarPlataformas(parsed);
+    } catch {
+      // no es JSON: intentar separar por comas
+    }
+    return value
+      .split(',')
+      .map((p) => p.trim())
+      .filter((p) => PLATAFORMAS_VALIDAS.includes(p));
+  }
+  return [];
+}
 
 function esCiudadGallega(ciudad: string | null): boolean {
   if (!ciudad) return false;
@@ -207,7 +234,7 @@ export async function GET(request: Request) {
       ),
       pool.query(
         `SELECT id, query, sector, activo, plataforma, geo, config
-         FROM radar_queries WHERE activo = true ORDER BY created_at DESC`
+         FROM radar_queries ORDER BY activo DESC, created_at DESC`
       ),
       pool.query(
         `SELECT
@@ -328,6 +355,62 @@ export async function POST(request: Request) {
     } catch (err) {
       console.error('hunter geocode error:', err);
       return NextResponse.json({ message: 'Error al geocodificar' }, { status: 500 });
+    }
+  }
+
+  if (action === 'crear-query' || action === 'actualizar-query' || action === 'eliminar-query') {
+    // Gestión de queries del radar (tabla radar_queries). El workflow solo usa
+    // las filas con activo = true; las inactivas se conservan para reactivar.
+    try {
+      if (action === 'crear-query') {
+        const q = String((body as { query?: unknown }).query ?? '').trim();
+        if (!q) {
+          return NextResponse.json({ message: 'La query no puede estar vacía' }, { status: 400 });
+        }
+        const sector = String((body as { sector?: unknown }).sector ?? '').trim() || null;
+        const geo = String((body as { geo?: unknown }).geo ?? '').trim() || null;
+        const plataforma = normalizarPlataformas((body as { plataforma?: unknown }).plataforma);
+        const activo = (body as { activo?: unknown }).activo !== false;
+        const res = await pool.query(
+          `INSERT INTO radar_queries (query, sector, geo, plataforma, activo)
+           VALUES ($1, $2, $3, $4, $5) RETURNING id, query, sector, geo, plataforma, activo, created_at`,
+          [q, sector, geo, plataforma, activo]
+        );
+        return NextResponse.json({ ok: true, query: res.rows[0] });
+      }
+
+      if (action === 'actualizar-query') {
+        const id = String((body as { id?: unknown }).id ?? '');
+        if (!id) {
+          return NextResponse.json({ message: 'Falta el id de la query' }, { status: 400 });
+        }
+        const q = String((body as { query?: unknown }).query ?? '').trim();
+        if (!q) {
+          return NextResponse.json({ message: 'La query no puede estar vacía' }, { status: 400 });
+        }
+        const sector = String((body as { sector?: unknown }).sector ?? '').trim() || null;
+        const geo = String((body as { geo?: unknown }).geo ?? '').trim() || null;
+        const plataforma = normalizarPlataformas((body as { plataforma?: unknown }).plataforma);
+        const activo = (body as { activo?: unknown }).activo !== false;
+        await pool.query(
+          `UPDATE radar_queries
+           SET query = $1, sector = $2, geo = $3, plataforma = $4, activo = $5
+           WHERE id = $6`,
+          [q, sector, geo, plataforma, activo, id]
+        );
+        return NextResponse.json({ ok: true });
+      }
+
+      // eliminar-query
+      const id = String((body as { id?: unknown }).id ?? '');
+      if (!id) {
+        return NextResponse.json({ message: 'Falta el id de la query' }, { status: 400 });
+      }
+      await pool.query('DELETE FROM radar_queries WHERE id = $1', [id]);
+      return NextResponse.json({ ok: true });
+    } catch (err) {
+      console.error('hunter query CRUD error:', err);
+      return NextResponse.json({ message: 'Error al gestionar la query' }, { status: 500 });
     }
   }
 

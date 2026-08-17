@@ -55,6 +55,7 @@ interface RadarQuery {
   activo: boolean;
   plataforma: string[] | null;
   geo: string | null;
+  created_at: string;
 }
 
 interface Filtros {
@@ -130,6 +131,116 @@ export function HunterMap() {
   const [fComunidad, setFComunidad] = useState<string>('all');
   const [fCiudad, setFCiudad] = useState<string>('all');
   const [fTipo, setFTipo] = useState<string>('all');
+
+  // --- Gestión de queries del radar ---
+  const PLATAFORMAS: Array<{ id: string; label: string }> = [
+    { id: 'LinkedIn', label: 'LinkedIn' },
+    { id: 'Social Media', label: 'Social Media' },
+    { id: 'Google My Business', label: 'Google My Business' },
+    { id: 'Google Search', label: 'Google Search' },
+  ];
+  const [nuevaQuery, setNuevaQuery] = useState({ query: '', sector: '', geo: 'Galicia, España', plataforma: [] as string[], activo: true });
+  const [mostrarNueva, setMostrarNueva] = useState(false);
+  const [edicion, setEdicion] = useState<Record<string, { query: string; sector: string; geo: string; plataforma: string[] }>>({});
+  const [querySaving, setQuerySaving] = useState(false);
+  const [queryMsg, setQueryMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const guardarQuery = async (id: string, activo: boolean) => {
+    const d = edicion[id];
+    if (!d || !d.query.trim()) {
+      setQueryMsg({ ok: false, text: 'La query no puede estar vacía' });
+      return;
+    }
+    setQuerySaving(true);
+    try {
+      const res = await fetch('/api/admin/hunter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'actualizar-query', id, ...d, activo }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? 'Error al guardar');
+      setQueryMsg({ ok: true, text: '✅ Query guardada' });
+      setEdicion((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      load();
+    } catch (err) {
+      setQueryMsg({ ok: false, text: err instanceof Error ? err.message : 'Error al guardar' });
+    } finally {
+      setQuerySaving(false);
+    }
+  };
+
+  const crearQuery = async () => {
+    if (!nuevaQuery.query.trim()) {
+      setQueryMsg({ ok: false, text: 'Escribe la query' });
+      return;
+    }
+    setQuerySaving(true);
+    try {
+      const res = await fetch('/api/admin/hunter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'crear-query', ...nuevaQuery }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? 'Error al crear');
+      setQueryMsg({ ok: true, text: '✅ Query añadida al radar' });
+      setNuevaQuery({ query: '', sector: '', geo: 'Galicia, España', plataforma: [], activo: true });
+      setMostrarNueva(false);
+      load();
+    } catch (err) {
+      setQueryMsg({ ok: false, text: err instanceof Error ? err.message : 'Error al crear' });
+    } finally {
+      setQuerySaving(false);
+    }
+  };
+
+  const eliminarQuery = async (id: string) => {
+    if (!window.confirm('¿Eliminar esta query del radar?')) return;
+    setQuerySaving(true);
+    try {
+      const res = await fetch('/api/admin/hunter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'eliminar-query', id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? 'Error al eliminar');
+      setQueryMsg({ ok: true, text: '🗑️ Query eliminada' });
+      load();
+    } catch (err) {
+      setQueryMsg({ ok: false, text: err instanceof Error ? err.message : 'Error al eliminar' });
+    } finally {
+      setQuerySaving(false);
+    }
+  };
+
+  const toggleActivo = (q: RadarQuery) => {
+    setEdicion((prev) => ({
+      ...prev,
+      [q.id]: prev[q.id] ?? {
+        query: q.query,
+        sector: q.sector ?? '',
+        geo: q.geo ?? '',
+        plataforma: Array.isArray(q.plataforma) ? q.plataforma : [],
+      },
+    }));
+    guardarQuery(q.id, !q.activo);
+  };
+
+  const editarPlataforma = (id: string, plat: string, check: boolean) => {
+    setEdicion((prev) => {
+      const d = prev[id];
+      if (!d) return prev;
+      const lista = check ? [...d.plataforma, plat] : d.plataforma.filter((p) => p !== plat);
+      return { ...prev, [id]: { ...d, plataforma: lista } };
+    });
+  };
+
 
   const load = async () => {
     try {
@@ -447,7 +558,7 @@ export function HunterMap() {
           </h2>
           <p className="text-xs text-slate-400 mt-1">
             {leads.length + objetivos.length} negocios en total · {localizados} en el mapa ·{' '}
-            {queries.length} queries activas · foco: Galicia (Santiago de Compostela)
+            {queries.filter((q) => q.activo).length} queries activas · foco: Galicia (Santiago de Compostela)
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -679,26 +790,230 @@ export function HunterMap() {
         </div>
       </div>
 
-      {/* Queries activas */}
-      {queries.length > 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-            Queries activas del radar (foco Galicia / Santiago de Compostela)
+      {/* ===== Gestión de queries del radar ===== */}
+      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <div className="flex items-center justify-between gap-3 mb-1">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            Queries del radar
+            <span className="ml-2 normal-case font-semibold text-emerald-400">
+              {queries.filter((q) => q.activo).length} activas · {queries.filter((q) => !q.activo).length} en pausa
+            </span>
           </p>
-          <div className="flex flex-wrap gap-2">
-            {queries.map((q) => (
-              <span
-                key={q.id}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-300"
-              >
-                <span className="text-emerald-400 font-semibold">{q.query}</span>
-                {q.geo && <span className="text-slate-500"> · {q.geo}</span>}
-                {q.sector && <span className="text-slate-500"> · {q.sector}</span>}
-              </span>
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setMostrarNueva((v) => !v);
+              setQueryMsg(null);
+            }}
+            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white transition-colors"
+          >
+            {mostrarNueva ? '✕ Cerrar' : '+ Añadir query'}
+          </button>
         </div>
-      )}
+        <p className="text-[11px] text-slate-500 mb-3">
+          El radar ejecuta cada día (12:00) las queries activas. Edita el texto, el sector, la ubicación o
+          la plataforma (añade filtros <code className="text-slate-400">site:</code> en la búsqueda).
+        </p>
+
+        {queryMsg && (
+          <p className={`mb-3 text-xs px-3 py-2 rounded-xl ${queryMsg.ok ? 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300' : 'bg-red-950/60 border border-red-500/40 text-red-300'}`}>
+            {queryMsg.text}
+          </p>
+        )}
+
+        {mostrarNueva && (
+          <div className="mb-4 p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/20 space-y-3">
+            <p className="text-xs font-bold text-emerald-400">➕ Nueva query del radar</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="md:col-span-2 flex flex-col gap-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Query</label>
+                <input
+                  value={nuevaQuery.query}
+                  onChange={(e) => setNuevaQuery((v) => ({ ...v, query: e.target.value }))}
+                  placeholder="Ej: restaurantes en Santiago de Compostela que no contestan"
+                  className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Sector (opcional)</label>
+                <input
+                  value={nuevaQuery.sector}
+                  onChange={(e) => setNuevaQuery((v) => ({ ...v, sector: e.target.value }))}
+                  placeholder="hostelería"
+                  className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Ubicación (geo)</label>
+                <input
+                  value={nuevaQuery.geo}
+                  onChange={(e) => setNuevaQuery((v) => ({ ...v, geo: e.target.value }))}
+                  placeholder="Galicia, España"
+                  className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div className="md:col-span-2 flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Plataforma (filtro site:)</label>
+                <div className="flex flex-wrap gap-2">
+                  {PLATAFORMAS.map((p) => (
+                    <label key={p.id} className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-600 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={nuevaQuery.plataforma.includes(p.id)}
+                        onChange={(e) =>
+                          setNuevaQuery((v) => ({
+                            ...v,
+                            plataforma: e.target.checked ? [...v.plataforma, p.id] : v.plataforma.filter((x) => x !== p.id),
+                          }))
+                        }
+                        className="accent-emerald-500"
+                      />
+                      {p.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={crearQuery}
+              disabled={querySaving}
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-sm font-bold text-white transition-colors"
+            >
+              {querySaving ? 'Guardando…' : 'Añadir al radar'}
+            </button>
+          </div>
+        )}
+
+        {queries.length === 0 ? (
+          <p className="text-xs text-slate-500">Aún no hay queries. Añade la primera con «+ Añadir query».</p>
+        ) : (
+          <div className="space-y-2">
+            {queries.map((q) => {
+              const d = edicion[q.id] ?? {
+                query: q.query,
+                sector: q.sector ?? '',
+                geo: q.geo ?? '',
+                plataforma: Array.isArray(q.plataforma) ? q.plataforma : [],
+              };
+              const editando = !!edicion[q.id];
+              return (
+                <div
+                  key={q.id}
+                  className={`rounded-xl border p-3 transition-colors ${q.activo ? 'border-slate-700 bg-slate-950/40' : 'border-slate-800 bg-slate-950/20 opacity-70'}`}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${q.activo ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700/50 text-slate-400'}`}>
+                        {q.activo ? '● ACTIVA' : '○ EN PAUSA'}
+                      </span>
+                      <span className="text-[10px] text-slate-600">
+                        {new Date(q.created_at).toLocaleDateString('es-ES')}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleActivo(q)}
+                        disabled={querySaving}
+                        title={q.activo ? 'Pausar query' : 'Activar query'}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${q.activo ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}
+                      >
+                        {q.activo ? '⏸ Pausar' : '▶ Activar'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEdicion((prev) => {
+                            const next = { ...prev };
+                            if (editando) delete next[q.id];
+                            else
+                              next[q.id] = {
+                                query: q.query,
+                                sector: q.sector ?? '',
+                                geo: q.geo ?? '',
+                                plataforma: Array.isArray(q.plataforma) ? q.plataforma : [],
+                              };
+                            return next;
+                          })
+                        }
+                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 border border-slate-700 transition-colors"
+                      >
+                        {editando ? 'Cancelar' : '✏️ Editar'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => eliminarQuery(q.id)}
+                        disabled={querySaving}
+                        className="px-2.5 py-1 rounded-lg bg-red-950/60 hover:bg-red-900/60 text-xs font-bold text-red-400 border border-red-500/30 transition-colors"
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </div>
+                  {editando ? (
+                    <div className="space-y-2.5">
+                      <input
+                        value={d.query}
+                        onChange={(e) => setEdicion((prev) => ({ ...prev, [q.id]: { ...prev[q.id], query: e.target.value } }))}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                        <input
+                          value={d.sector}
+                          onChange={(e) => setEdicion((prev) => ({ ...prev, [q.id]: { ...prev[q.id], sector: e.target.value } }))}
+                          placeholder="Sector (opcional)"
+                          className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                        <input
+                          value={d.geo}
+                          onChange={(e) => setEdicion((prev) => ({ ...prev, [q.id]: { ...prev[q.id], geo: e.target.value } }))}
+                          placeholder="Galicia, España"
+                          className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {PLATAFORMAS.map((p) => (
+                          <label key={p.id} className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-600 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={d.plataforma.includes(p.id)}
+                              onChange={(e) => editarPlataforma(q.id, p.id, e.target.checked)}
+                              className="accent-emerald-500"
+                            />
+                            {p.label}
+                          </label>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => guardarQuery(q.id, q.activo)}
+                          disabled={querySaving}
+                          className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-xs font-bold text-white transition-colors"
+                        >
+                          {querySaving ? 'Guardando…' : '💾 Guardar cambios'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                      <span className="text-emerald-400 font-semibold">{q.query}</span>
+                      {q.sector && <span className="text-slate-500">🏷 {q.sector}</span>}
+                      {q.geo && <span className="text-slate-500">📍 {q.geo}</span>}
+                      {Array.isArray(q.plataforma) && q.plataforma.length > 0 && (
+                        <span className="text-slate-500">
+                          🎛 {q.plataforma.join(' · ')}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* ===== Panel de detalle del negocio ===== */}
       {seleccion && (
