@@ -36,14 +36,6 @@ async function requireAdmin(request: Request) {
   return valid;
 }
 
-/** Limpia el nombre de negocio para geocodificar: "Tipo en Ciudad - Nombre" → "Nombre" */
-function businessName(empresa: string): string {
-  const parts = empresa.split('-').map((p) => p.trim());
-  const last = parts[parts.length - 1] ?? empresa;
-  if (last && last.length >= 3) return last;
-  return empresa;
-}
-
 /** Detecta la ciudad en el nombre: "Clínica dental en Madrid - X" → "Madrid";
  *  "Best Cafés in Santiago de Compostela - Y" → "Santiago de Compostela" */
 function cityFromName(text: string): string | null {
@@ -74,47 +66,116 @@ function inSpain(lat: number, lon: number): boolean {
   return lat >= ES_BBOX.minLat && lat <= ES_BBOX.maxLat && lon >= ES_BBOX.minLon && lon <= ES_BBOX.maxLon;
 }
 
+// Distritos/regiones de Portugal que Photon devuelve como "state" — rechazar
+const PORTUGAL_STATES = ['viseu', 'lisboa', 'lisbon', 'porto', 'porto district', 'braga', 'coimbra', 'aveiro', 'setúbal', 'setubal', 'faro', 'guarda', 'vila real', 'bragança', 'braganca', 'viana do castelo', 'santarém', 'santarem', 'leiria', 'castelo branco', 'beja', 'évora', 'evora', 'portalegre', 'madeira', 'açores', 'azores', 'região norte', 'regiao norte', 'região centro', 'regiao centro', 'alentejo', 'algarve'];
+
+// Comunidades autónomas españolas (lo que devuelve Photon como state)
+const ES_COMUNIDADES = ['galicia', 'país vasco', 'pais vasco', 'euskadi', 'cataluña', 'cataluna', 'comunidad de madrid', 'madrid', 'andalucía', 'andalucia', 'comunidad valenciana', 'valenciana', 'aragón', 'aragon', 'castilla y león', 'castilla y leon', 'castilla-la mancha', 'castilla la mancha', 'extremadura', 'asturias', 'principado de asturias', 'cantabria', 'la rioja', 'navarra', 'región de murcia', 'region de murcia', 'murcia', 'islas baleares', 'baleares', 'canarias'];
+
+function esPortugal(state: string | null): boolean {
+  if (!state) return false;
+  const s = state.toLowerCase();
+  return PORTUGAL_STATES.some((p) => s.includes(p));
+}
+
+interface GeoResult {
+  lat: number;
+  lon: number;
+  match: string;
+  comunidad: string | null;
+  ciudad: string | null;
+}
+
+// Caja de Galicia para priorizar resultados cuando la ciudad es gallega
+const GALICIA_BBOX = 'bbox=-9.4,41.7,-6.7,43.9';
+const CIUDADES_GALLEGAS = ['santiago de compostela', 'a coruña', 'la coruña', 'vigo', 'ourense', 'orense', 'lugo', 'pontevedra', 'ferrol', 'santiago'];
+
+function esCiudadGallega(ciudad: string | null): boolean {
+  if (!ciudad) return false;
+  const c = ciudad.toLowerCase();
+  return CIUDADES_GALLEGAS.some((g) => c.includes(g));
+}
+
 /** Geocodifica probando varias queries: negocio, negocio+ciudad, dominio+ciudad, ciudad.
  *  Usa Photon (Komoot, OSM, sin API key) con Nominatim como respaldo.
- *  Solo acepta resultados dentro de España (el radar apunta a negocios españoles). */
-async function geocode(queries: string[]): Promise<{ lat: number; lon: number; match: string } | null> {
+ *  Solo acepta resultados dentro de España (el radar apunta a negocios españoles).
+ *  Devuelve también comunidad autónoma y ciudad detectadas para los filtros. */
+async function geocode(queries: string[], cityHint: string | null = null): Promise<GeoResult | null> {
+  const cleanName = (s: string) => s.toLowerCase().replace(/[^a-záéíóúñü\s]/gi, '').trim();
+  const knownComunidades = ['galicia', 'país vasco', 'cataluña', 'comunidad de madrid', 'andalucía', 'comunidad valenciana', 'aragón', 'castilla y león', 'castilla-la mancha', 'extremadura', 'asturias', 'cantabria', 'la rioja', 'navarra', 'región de murcia', 'islas baleares', 'canarias'];
+
   for (const query of queries) {
     // Photon primero (más permisivo, sin rate limit estricto)
+    let photonOk = false;
+    const bboxParam = cityHint && esCiudadGallega(cityHint) ? GALICIA_BBOX : '';
     try {
-      const pUrl = `https://photon.komoot.io/api/?limit=3&q=${encodeURIComponent(query)}`;
+      const pUrl = `https://photon.komoot.io/api/?limit=5&q=${encodeURIComponent(query)}${bboxParam ? '&' + bboxParam : ''}`;
       const pRes = await fetch(pUrl, {
         headers: { 'User-Agent': 'AgenciAlquimiaPanel/1.0 (admin panel geocoding)' },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(6000),
       });
       if (pRes.ok) {
-        const pData = (await pRes.json()) as { features?: Array<{ geometry: { coordinates: [number, number] } }> };
+        photonOk = true;
+        const pData = (await pRes.json()) as {
+          features?: Array<{
+            geometry: { coordinates: [number, number] };
+            properties?: { city?: string; state?: string; name?: string };
+          }>;
+        };
         for (const feat of pData.features ?? []) {
           const [lon, lat] = feat?.geometry?.coordinates ?? [0, 0];
-          if (inSpain(lat, lon)) {
-            return { lat, lon, match: query };
+          const featState = feat?.properties?.state ?? null;
+          if (inSpain(lat, lon) && !esPortugal(featState)) {
+            const comunidadRaw = feat?.properties?.state ?? null;
+            const ciudad = feat?.properties?.city ?? null;
+            // Normalizar comunidad: Photon devuelve "Galicia" como state
+            if (comunidadRaw) {
+              const c = cleanName(comunidadRaw);
+              const known = knownComunidades.find((k) => c.includes(k) || k.includes(c));
+              const comunidad = known ? known.charAt(0).toUpperCase() + known.slice(1) : comunidadRaw;
+              return { lat, lon, match: query, comunidad, ciudad };
+            }
+            return { lat, lon, match: query, comunidad: null, ciudad };
           }
         }
       }
     } catch {
       // seguir con Nominatim
     }
-    // Nominatim como respaldo
+    // Nominatim solo si Photon no respondió (evita duplicar llamadas por negocio)
+    if (photonOk) continue;
     const url = `https://nominatim.openstreetmap.org/search?format=json&limit=3&q=${encodeURIComponent(query)}`;
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'AgenciAlquimiaPanel/1.0 (admin panel geocoding)' },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (res.ok) {
-      const data = (await res.json()) as Array<{ lat: string; lon: string }>;
-      for (const item of data) {
-        const lat = parseFloat(item.lat);
-        const lon = parseFloat(item.lon);
-        if (inSpain(lat, lon)) {
-          return { lat, lon, match: query };
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'AgenciAlquimiaPanel/1.0 (admin panel geocoding)' },
+        signal: AbortSignal.timeout(6000),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as Array<{
+          lat: string;
+          lon: string;
+          display_name?: string;
+        }>;
+        for (const item of data) {
+          const lat = parseFloat(item.lat);
+          const lon = parseFloat(item.lon);
+          const dn = item.display_name ?? '';
+          if (inSpain(lat, lon) && !dn.toLowerCase().includes('portugal') && !dn.toLowerCase().includes('porto') && !dn.toLowerCase().includes('lisboa')) {
+            // Nominatim no da ciudad/comunidad estructurada; intentar inferir del display_name
+            const dn = item.display_name ?? '';
+            const parts = dn.split(',').map((p) => p.trim());
+            const ciudad = parts.slice(0, 4).find(
+              (p) =>
+                /^(?:Santiago de Compostela|[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)*)$/.test(p) &&
+                !['España', 'Spain'].includes(p)
+            ) ?? null;
+            return { lat, lon, match: query, comunidad: null, ciudad };
+          }
         }
       }
+    } catch {
+      // siguiente query
     }
-    await new Promise((r) => setTimeout(r, 400));
   }
   return null;
 }
@@ -124,22 +185,34 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: 'No autorizado' }, { status: 401 });
   }
   try {
-    const [leads, objetivos, queries] = await Promise.all([
+    const [leads, objetivos, queries, filtros] = await Promise.all([
       pool.query(
         `SELECT id, empresa, nicho, email, telefono, senal_detectada, estado_caza,
-                feedback_cliente, url_web, lat, lon, created_at
+                feedback_cliente, url_web, lat, lon, comunidad, ciudad, created_at
          FROM leads_hunter ORDER BY created_at DESC`
       ),
       pool.query(
-        `SELECT id, negocio, fallo_detectado, potencial_venta, url, sector, lat, lon, created_at
+        `SELECT id, negocio, fallo_detectado, potencial_venta, url, sector, lat, lon, comunidad, ciudad, created_at
          FROM objetivos_agencia ORDER BY created_at DESC`
       ),
       pool.query(
         `SELECT id, query, sector, activo, plataforma, geo, config
          FROM radar_queries WHERE activo = true ORDER BY created_at DESC`
       ),
+      pool.query(
+        `SELECT
+           (SELECT array_agg(DISTINCT comunidad) FROM objetivos_agencia WHERE comunidad IS NOT NULL) AS comunidades_obj,
+           (SELECT array_agg(DISTINCT ciudad) FROM objetivos_agencia WHERE ciudad IS NOT NULL) AS ciudades_obj,
+           (SELECT array_agg(DISTINCT sector) FROM objetivos_agencia WHERE sector IS NOT NULL) AS sectores_obj,
+           (SELECT array_agg(DISTINCT nicho) FROM leads_hunter WHERE nicho IS NOT NULL) AS nichos_leads`
+      ),
     ]);
-    return NextResponse.json({ leads: leads.rows, objetivos: objetivos.rows, queries: queries.rows });
+    return NextResponse.json({
+      leads: leads.rows,
+      objetivos: objetivos.rows,
+      queries: queries.rows,
+      filtros: filtros.rows[0],
+    });
   } catch (err) {
     console.error('hunter GET error:', err);
     return NextResponse.json({ message: 'Error al leer el radar' }, { status: 500 });
@@ -183,15 +256,16 @@ export async function POST(request: Request) {
   if (action === 'geocode') {
     try {
       // Primero los objetivos (negocios diana reales del radar), luego leads sin coord.
+      // Lote de 30 por llamada para no exceder el tiempo del serverless.
       const objetivos = await pool.query(
         `SELECT id, negocio, url FROM objetivos_agencia
-         WHERE lat IS NULL OR lon IS NULL ORDER BY created_at DESC LIMIT 8`
+         WHERE lat IS NULL OR lon IS NULL ORDER BY created_at DESC LIMIT 15`
       );
       const leads = await pool.query(
         `SELECT id, empresa, url_web FROM leads_hunter
          WHERE lat IS NULL OR lon IS NULL
          ORDER BY (empresa LIKE '% - %') DESC, created_at DESC
-         LIMIT 8`
+         LIMIT 15`
       );
       const updated: string[] = [];
       const failed: string[] = [];
@@ -209,25 +283,32 @@ export async function POST(request: Request) {
         if (nombre) queries.push(nombre);
         if (domain) queries.push(domain);
         if (city) queries.push(city);
-        const coords = await geocode(queries);
+        const coords = await geocode(queries, city);
         if (coords) {
           await pool.query(
             isObj
-              ? 'UPDATE objetivos_agencia SET lat = $1, lon = $2 WHERE id = $3'
-              : 'UPDATE leads_hunter SET lat = $1, lon = $2 WHERE id = $3',
-            [coords.lat, coords.lon, row.id]
+              ? 'UPDATE objetivos_agencia SET lat = $1, lon = $2, comunidad = $3, ciudad = $4 WHERE id = $5'
+              : 'UPDATE leads_hunter SET lat = $1, lon = $2, comunidad = $3, ciudad = $4 WHERE id = $5',
+            [coords.lat, coords.lon, coords.comunidad, coords.ciudad, row.id]
           );
           updated.push(`${nombre.slice(0, 30)} → ${coords.match}`);
         } else {
           failed.push(nombre.slice(0, 40));
         }
       }
+      // Contar cuántos quedan pendientes para orientar al usuario
+      const pendientes = await pool.query(
+        `SELECT (SELECT count(*) FROM objetivos_agencia WHERE lat IS NULL) +
+                (SELECT count(*) FROM leads_hunter WHERE lat IS NULL) AS pendientes`
+      );
+      const quedan = Number(pendientes.rows[0]?.pendientes ?? 0);
       return NextResponse.json({
         ok: true,
         geocoded: updated.length,
         failed: failed.length,
         updated,
         failed_names: failed,
+        pendientes: quedan,
       });
     } catch (err) {
       console.error('hunter geocode error:', err);
