@@ -39,6 +39,8 @@ interface Objetivo {
   potencial_venta: string | null;
   url: string | null;
   sector: string | null;
+  email: string | null;
+  telefono: string | null;
   lat: number | null;
   lon: number | null;
   comunidad: string | null;
@@ -60,6 +62,11 @@ interface Filtros {
   ciudades_obj: string[] | null;
   sectores_obj: string[] | null;
   nichos_leads: string[] | null;
+}
+
+interface NegocioSeleccionado {
+  tipo: 'objetivo' | 'lead';
+  item: Objetivo | Lead;
 }
 
 const ESTADO_COLOR: Record<string, string> = {
@@ -106,6 +113,18 @@ export function HunterMap() {
   const [status, setStatus] = useState<string | null>(null);
   const [statusDetalle, setStatusDetalle] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Negocio seleccionado (detalle)
+  const [seleccion, setSeleccion] = useState<NegocioSeleccionado | null>(null);
+  // Generador de mensajes con Max
+  const [msgTipo, setMsgTipo] = useState<'whatsapp' | 'email'>('whatsapp');
+  const [msgGenerando, setMsgGenerando] = useState(false);
+  const [msgTexto, setMsgTexto] = useState('');
+  const [msgEstado, setMsgEstado] = useState<'idle' | 'ok' | 'error'>('idle');
+  const [msgDetalle, setMsgDetalle] = useState<string | null>(null);
+  const [enviandoWa, setEnviandoWa] = useState(false);
+  const [enviadoWa, setEnviadoWa] = useState(false);
+  const [copiado, setCopiado] = useState(false);
 
   // Filtros activos
   const [fComunidad, setFComunidad] = useState<string>('all');
@@ -191,6 +210,7 @@ export function HunterMap() {
         iconAnchor: [9, 9],
       });
       const marker = L.marker([lead.lat!, lead.lon!], { icon }).addTo(map);
+      marker.on('click', () => setSeleccion({ tipo: 'lead', item: lead }));
       marker.bindPopup(
         `<div style="font-family:system-ui;font-size:12px;max-width:300px;max-height:260px;overflow-y:auto">
           <strong style="font-size:13px">${esc(lead.empresa)}</strong><br/>
@@ -215,6 +235,7 @@ export function HunterMap() {
         iconAnchor: [12, 12],
       });
       const marker = L.marker([obj.lat!, obj.lon!], { icon }).addTo(map);
+      marker.on('click', () => setSeleccion({ tipo: 'objetivo', item: obj }));
       marker.bindPopup(
         `<div style="font-family:system-ui;font-size:12px;max-width:300px;max-height:260px;overflow-y:auto">
           <strong style="font-size:13px">🎯 ${esc(obj.negocio)}</strong><br/>
@@ -330,6 +351,91 @@ export function HunterMap() {
     (filtros.nichos_leads ?? []).forEach((n) => n && set.add(n));
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'es'));
   }, [filtros.sectores_obj, filtros.nichos_leads]);
+
+  // --- Generador de mensajes con Max ---
+  const generarMensaje = async () => {
+    if (!seleccion) return;
+    setMsgGenerando(true);
+    setMsgEstado('idle');
+    setMsgDetalle(null);
+    try {
+      const item = seleccion.item;
+      const negocio = {
+        nombre: seleccion.tipo === 'objetivo' ? (item as Objetivo).negocio : (item as Lead).empresa,
+        sector: (item as Objetivo).sector ?? (item as Lead).nicho ?? '',
+        ciudad: item.ciudad ?? '',
+        fallo: (item as Objetivo).fallo_detectado ?? (item as Lead).senal_detectada ?? '',
+        potencial: (item as Objetivo).potencial_venta ?? '',
+        url: (item as Objetivo).url ?? (item as Lead).url_web ?? '',
+        telefono: item.telefono ?? '',
+        email: item.email ?? '',
+      };
+      const res = await fetch('/api/admin/hunter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'generar-mensaje', tipo: msgTipo, negocio }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? 'Error generando mensaje');
+      setMsgTexto(data.response ?? '');
+      setMsgEstado('ok');
+      setMsgDetalle(
+        msgTipo === 'whatsapp'
+          ? 'Mensaje listo. Revísalo, ajústalo si quieres y envíalo por WhatsApp o cópialo.'
+          : 'Correo listo. Cópialo y pégalo en tu cliente de correo, o abre tu app de email.'
+      );
+    } catch (err) {
+      setMsgEstado('error');
+      setMsgDetalle(err instanceof Error ? err.message : 'Error generando el mensaje');
+    } finally {
+      setMsgGenerando(false);
+    }
+  };
+
+  const copiarMensaje = async () => {
+    try {
+      await navigator.clipboard.writeText(msgTexto);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      setMsgDetalle('No se pudo copiar automáticamente. Selecciona el texto manualmente.');
+    }
+  };
+
+  const enviarWhatsApp = async () => {
+    if (!seleccion || !msgTexto.trim()) return;
+    const telefono = (seleccion.item.telefono ?? '').replace(/\D/g, '');
+    if (!telefono) {
+      setMsgDetalle('Este negocio no tiene teléfono guardado.');
+      return;
+    }
+    setEnviandoWa(true);
+    setEnviadoWa(false);
+    try {
+      const res = await fetch('/api/admin/inbox', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telefono, texto: msgTexto }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? 'Error enviando');
+      setEnviadoWa(true);
+      setMsgDetalle(`✅ Enviado por WhatsApp a ${seleccion.item.telefono}. El mensaje quedó registrado en el inbox.`);
+    } catch (err) {
+      setMsgDetalle(`⚠️ No se pudo enviar: ${err instanceof Error ? err.message : 'desconocido'}`);
+    } finally {
+      setEnviandoWa(false);
+    }
+  };
+
+  const cerrarDetalle = () => {
+    setSeleccion(null);
+    setMsgTexto('');
+    setMsgEstado('idle');
+    setMsgDetalle(null);
+    setEnviadoWa(false);
+    setCopiado(false);
+  };
 
   return (
     <section className="space-y-4">
@@ -477,7 +583,12 @@ export function HunterMap() {
               </p>
             )}
             {visibles.obj.map((o) => (
-              <div key={`obj-${o.id}`} className="px-4 py-3 hover:bg-slate-800/40 transition-colors">
+              <button
+                key={`obj-${o.id}`}
+                type="button"
+                onClick={() => setSeleccion({ tipo: 'objetivo', item: o })}
+                className="w-full text-left px-4 py-3 hover:bg-slate-800/40 transition-colors"
+              >
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm font-semibold text-slate-100 leading-snug">🎯 {o.negocio}</p>
                   {o.sector && (
@@ -490,7 +601,7 @@ export function HunterMap() {
                   <span>{o.lat != null && o.lon != null ? '📍 en mapa' : '📍 sin ubicación'}</span>
                   {o.ciudad && <span>🏙 {o.ciudad}{o.comunidad ? ` (${o.comunidad})` : ''}</span>}
                   {o.url && (
-                    <a href={o.url} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">
+                    <a href={o.url} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline" onClick={(e) => e.stopPropagation()}>
                       web ↗
                     </a>
                   )}
@@ -502,10 +613,23 @@ export function HunterMap() {
                 {o.potencial_venta && (
                   <p className="text-[11px] text-emerald-400/80 mt-0.5">💰 {o.potencial_venta}</p>
                 )}
-              </div>
+                {(o.email || o.telefono) && (
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    {o.email && <span>✉️ {o.email}</span>}
+                    {o.email && o.telefono && ' · '}
+                    {o.telefono && <span>📞 {o.telefono}</span>}
+                  </p>
+                )}
+                <p className="text-[10px] text-emerald-500/70 mt-1">Ver detalle →</p>
+              </button>
             ))}
             {visibles.leads.map((l) => (
-              <div key={l.id} className="px-4 py-3 hover:bg-slate-800/40 transition-colors">
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => setSeleccion({ tipo: 'lead', item: l })}
+                className="w-full text-left px-4 py-3 hover:bg-slate-800/40 transition-colors"
+              >
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm font-semibold text-slate-100 leading-snug">{l.empresa}</p>
                   <span
@@ -527,6 +651,7 @@ export function HunterMap() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-emerald-400 hover:underline"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       web ↗
                     </a>
@@ -547,7 +672,8 @@ export function HunterMap() {
                 {l.feedback_cliente && (
                   <p className="text-[11px] text-slate-400 mt-0.5">💬 {l.feedback_cliente}</p>
                 )}
-              </div>
+                <p className="text-[10px] text-emerald-500/70 mt-1">Ver detalle →</p>
+              </button>
             ))}
           </div>
         </div>
@@ -570,6 +696,253 @@ export function HunterMap() {
                 {q.sector && <span className="text-slate-500"> · {q.sector}</span>}
               </span>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ===== Panel de detalle del negocio ===== */}
+      {seleccion && (
+        <div className="fixed inset-0 z-[1200] flex justify-end bg-black/60 backdrop-blur-sm" onClick={cerrarDetalle}>
+          <div
+            className="w-full max-w-lg h-full bg-slate-900 border-l border-slate-700/60 shadow-2xl overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cabecera */}
+            <div className="sticky top-0 z-10 px-6 py-4 bg-slate-950/95 border-b border-slate-800 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 uppercase tracking-wider">
+                    {seleccion.tipo === 'objetivo' ? '🎯 Objetivo del radar' : '📥 Lead cazado'}
+                  </span>
+                  {seleccion.tipo === 'lead' && (seleccion.item as Lead).estado_caza && (
+                    <span
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{
+                        backgroundColor: `${estadoColor((seleccion.item as Lead).estado_caza)}22`,
+                        color: estadoColor((seleccion.item as Lead).estado_caza),
+                      }}
+                    >
+                      {estadoLabel((seleccion.item as Lead).estado_caza)}
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-lg font-bold text-white mt-2 leading-snug">
+                  {seleccion.tipo === 'objetivo' ? (seleccion.item as Objetivo).negocio : (seleccion.item as Lead).empresa}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={cerrarDetalle}
+                className="shrink-0 p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Contacto */}
+              <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 space-y-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">📇 Contacto</p>
+                {(seleccion.item.email || (seleccion.tipo === 'lead' && (seleccion.item as Lead).email)) && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-slate-200 flex items-center gap-2 min-w-0">
+                      <span>✉️</span>
+                      <span className="truncate">{seleccion.item.email}</span>
+                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <a
+                        href={`mailto:${seleccion.item.email}`}
+                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-emerald-400 transition-colors"
+                      >
+                        Escribir
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(seleccion.item.email ?? '');
+                          setMsgDetalle('✉️ Email copiado al portapapeles.');
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition-colors"
+                      >
+                        Copiar
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {seleccion.item.telefono && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-slate-200 flex items-center gap-2 min-w-0">
+                      <span>📞</span>
+                      <span className="truncate">{seleccion.item.telefono}</span>
+                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <a
+                        href={`tel:${seleccion.item.telefono.replace(/\D/g, '')}`}
+                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-emerald-400 transition-colors"
+                      >
+                        Llamar
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(seleccion.item.telefono ?? '');
+                          setMsgDetalle('📞 Teléfono copiado al portapapeles.');
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition-colors"
+                      >
+                        Copiar
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {!seleccion.item.email && !seleccion.item.telefono && (
+                  <p className="text-xs text-slate-500">Sin email ni teléfono guardados aún.</p>
+                )}
+                {(seleccion.tipo === 'objetivo' ? (seleccion.item as Objetivo).url : (seleccion.item as Lead).url_web) && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-slate-200 flex items-center gap-2 min-w-0">
+                      <span>🌐</span>
+                      <span className="truncate">
+                        {(seleccion.tipo === 'objetivo' ? (seleccion.item as Objetivo).url : (seleccion.item as Lead).url_web)?.replace(/^https?:\/\/(www\.)?/, '')}
+                      </span>
+                    </span>
+                    <a
+                      href={(seleccion.tipo === 'objetivo' ? (seleccion.item as Objetivo).url : (seleccion.item as Lead).url_web) ?? '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-emerald-400 transition-colors shrink-0"
+                    >
+                      Abrir web ↗
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {/* Información del negocio */}
+              <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 space-y-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">📋 Información del negocio</p>
+                {(seleccion.tipo === 'objetivo' ? (seleccion.item as Objetivo).sector : (seleccion.item as Lead).nicho) && (
+                  <p className="text-sm text-slate-300">🏷 <span className="text-slate-500">Tipo:</span> {seleccion.tipo === 'objetivo' ? (seleccion.item as Objetivo).sector : (seleccion.item as Lead).nicho}</p>
+                )}
+                {seleccion.item.ciudad && (
+                  <p className="text-sm text-slate-300">📍 <span className="text-slate-500">Ubicación:</span> {seleccion.item.ciudad}{seleccion.item.comunidad ? ` (${seleccion.item.comunidad})` : ''}</p>
+                )}
+                {seleccion.tipo === 'objetivo' && (seleccion.item as Objetivo).fallo_detectado && (
+                  <p className="text-sm text-slate-300">⚠️ <span className="text-slate-500">Fallo detectado:</span> {(seleccion.item as Objetivo).fallo_detectado}</p>
+                )}
+                {seleccion.tipo === 'objetivo' && (seleccion.item as Objetivo).potencial_venta && (
+                  <p className="text-sm text-slate-300">💰 <span className="text-slate-500">Potencial de venta:</span> {(seleccion.item as Objetivo).potencial_venta}</p>
+                )}
+                {seleccion.tipo === 'lead' && (seleccion.item as Lead).senal_detectada && (
+                  <p className="text-sm text-slate-300">📡 <span className="text-slate-500">Señal detectada:</span> {(seleccion.item as Lead).senal_detectada}</p>
+                )}
+                {seleccion.tipo === 'lead' && (seleccion.item as Lead).feedback_cliente && (
+                  <p className="text-sm text-slate-300">💬 <span className="text-slate-500">Feedback:</span> {(seleccion.item as Lead).feedback_cliente}</p>
+                )}
+                <p className="text-xs text-slate-600">Detectado el {new Date(seleccion.item.created_at).toLocaleString('es-ES')}</p>
+              </div>
+
+              {/* Generador de mensajes con Max */}
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">🤖 Mensaje de contacto con Max</p>
+                  <div className="flex rounded-lg overflow-hidden border border-slate-700">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMsgTipo('whatsapp');
+                        setMsgTexto('');
+                        setMsgEstado('idle');
+                      }}
+                      className={`px-3 py-1.5 text-xs font-bold transition-colors ${msgTipo === 'whatsapp' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+                    >
+                      WhatsApp
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMsgTipo('email');
+                        setMsgTexto('');
+                        setMsgEstado('idle');
+                      }}
+                      className={`px-3 py-1.5 text-xs font-bold transition-colors ${msgTipo === 'email' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+                    >
+                      Email
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Max redacta un mensaje personalizado con los datos de este negocio
+                  (fallo detectado, sector, ciudad…) para que contactes con potencial.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={generarMensaje}
+                  disabled={msgGenerando}
+                  className="w-full px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-bold text-white transition-colors shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
+                >
+                  {msgGenerando ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      Max redactando…
+                    </>
+                  ) : (
+                    <>✨ Generar {msgTipo === 'whatsapp' ? 'mensaje de WhatsApp' : 'correo'} con Max</>
+                  )}
+                </button>
+
+                {msgTexto && (
+                  <>
+                    <textarea
+                      value={msgTexto}
+                      onChange={(e) => setMsgTexto(e.target.value)}
+                      rows={8}
+                      className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 font-mono leading-relaxed"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={copiarMensaje}
+                        className="flex-1 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 transition-colors border border-slate-700"
+                      >
+                        {copiado ? '✅ Copiado' : '📋 Copiar texto'}
+                      </button>
+                      {msgTipo === 'whatsapp' && (
+                        <button
+                          type="button"
+                          onClick={enviarWhatsApp}
+                          disabled={enviandoWa || !seleccion.item.telefono}
+                          title={!seleccion.item.telefono ? 'Este negocio no tiene teléfono guardado' : 'Enviar por WhatsApp'}
+                          className="flex-1 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white transition-colors"
+                        >
+                          {enviandoWa ? 'Enviando…' : enviadoWa ? '✅ Enviado' : '📲 Enviar por WhatsApp'}
+                        </button>
+                      )}
+                      {msgTipo === 'email' && seleccion.item.email && (
+                        <a
+                          href={`mailto:${seleccion.item.email}?subject=${encodeURIComponent(`Propuesta de automatización para ${seleccion.tipo === 'objetivo' ? (seleccion.item as Objetivo).negocio : (seleccion.item as Lead).empresa}`)}&body=${encodeURIComponent(msgTexto)}`}
+                          className="flex-1 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-emerald-400 transition-colors border border-slate-700 text-center"
+                        >
+                          📤 Enviar por email
+                        </a>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {msgEstado === 'error' && msgDetalle && (
+                  <p className="text-xs text-red-400 bg-red-950/50 border border-red-500/30 rounded-xl px-3 py-2">⚠️ {msgDetalle}</p>
+                )}
+                {msgEstado === 'ok' && msgDetalle && (
+                  <p className="text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 rounded-xl px-3 py-2">{msgDetalle}</p>
+                )}
+                {msgDetalle && msgEstado === 'idle' && !msgTexto && (
+                  <p className="text-xs text-slate-400 bg-slate-950/50 border border-slate-800 rounded-xl px-3 py-2">{msgDetalle}</p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

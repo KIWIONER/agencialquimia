@@ -202,7 +202,7 @@ export async function GET(request: Request) {
          FROM leads_hunter ORDER BY created_at DESC`
       ),
       pool.query(
-        `SELECT id, negocio, fallo_detectado, potencial_venta, url, sector, lat, lon, comunidad, ciudad, created_at
+        `SELECT id, negocio, fallo_detectado, potencial_venta, url, sector, email, telefono, lat, lon, comunidad, ciudad, created_at
          FROM objetivos_agencia ORDER BY created_at DESC`
       ),
       pool.query(
@@ -328,6 +328,84 @@ export async function POST(request: Request) {
     } catch (err) {
       console.error('hunter geocode error:', err);
       return NextResponse.json({ message: 'Error al geocodificar' }, { status: 500 });
+    }
+  }
+
+  if (action === 'generar-mensaje') {
+    // Genera un mensaje de contacto (WhatsApp o email) para un negocio
+    // usando Max (webhook max-panel). El panel muestra el resultado para
+    // copiarlo o enviarlo por WhatsApp.
+    try {
+      const negocio = (body as { negocio?: Record<string, unknown> }).negocio ?? null;
+      const tipo = (body as { tipo?: string }).tipo === 'email' ? 'email' : 'whatsapp';
+      if (!negocio || !negocio.nombre) {
+        return NextResponse.json({ message: 'Falta el negocio' }, { status: 400 });
+      }
+
+      const apiUrl = process.env.N8N_API_URL ?? '';
+      const webhookBase = apiUrl.replace(/\/api\/v1\/?$/, '');
+      const telefonoMatias = process.env.ADMIN_WHATSAPP_DESTINO ?? '34657738334';
+
+      // Contexto del negocio para que Max redacte un mensaje personalizado
+      const nombre = String(negocio.nombre ?? '');
+      const sector = String(negocio.sector ?? '');
+      const ciudad = String(negocio.ciudad ?? '');
+      const fallo = String(negocio.fallo ?? '');
+      const potencial = String(negocio.potencial ?? '');
+      const web = String(negocio.url ?? '');
+      const telefonoNegocio = String(negocio.telefono ?? '');
+      const emailNegocio = String(negocio.email ?? '');
+
+      const datos = [
+        `Negocio: ${nombre}`,
+        sector ? `Sector: ${sector}` : null,
+        ciudad ? `Ciudad: ${ciudad}` : null,
+        fallo && fallo !== 'null' ? `Fallo detectado: ${fallo}` : null,
+        potencial && potencial !== 'null' ? `Potencial de venta: ${potencial}` : null,
+        web ? `Web: ${web}` : null,
+        telefonoNegocio ? `Teléfono: ${telefonoNegocio}` : null,
+        emailNegocio ? `Email: ${emailNegocio}` : null,
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      const prompt =
+        tipo === 'email'
+          ? `Redacta un CORREO ELECTRÓNICO de venta breve (máx 180 palabras, en español) para el negocio de AgenciAlquimia (agencia de automatización con IA para pymes). Sé concreto: menciona 1 problema que detectamos en su web/negocio y cómo lo resolvería un asistente IA 24/7. Tono profesional y cercano, sin relleno. Firma: Matías, AgenciAlquimia (matiasidiartviera@gmail.com, +34 604 051 111, agencialquimia.com). Asunto incluido en la primera línea con prefijo 'Asunto:'. Devuelve SOLO el correo.
+
+DATOS DEL NEGOCIO:\n${datos}`
+          : `Redacta un MENSAJE DE WHATSAPP de venta breve (máx 120 palabras, en español, sin emojis excesivos) para el negocio de AgenciAlquimia (agencia de automatización con IA para pymes). Sé concreto: menciona 1 problema que detectamos en su web/negocio y cómo lo resolvería un asistente IA 24/7. Tono cercano y profesional, con una sola pregunta final para abrir conversación. Firma: Matías, AgenciAlquimia. Devuelve SOLO el mensaje.
+
+DATOS DEL NEGOCIO:\n${datos}`;
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 90000);
+      const res = await fetch(`${webhookBase}/webhook/max-panel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chatInput: prompt,
+          sessionId: `gen_msg_${Date.now()}`,
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!res.ok) {
+        console.error('[hunter/generar] max-panel respondió', res.status);
+        return NextResponse.json({ message: `Max respondió ${res.status}` }, { status: 502 });
+      }
+      const data = await res.json();
+      const response =
+        typeof data?.output === 'string'
+          ? data.output
+          : typeof data?.response === 'string'
+            ? data.response
+            : JSON.stringify(data);
+      return NextResponse.json({ ok: true, tipo, response });
+    } catch (err) {
+      console.error('[hunter/generar] error', err);
+      return NextResponse.json({ message: 'Error generando el mensaje con Max' }, { status: 502 });
     }
   }
 
