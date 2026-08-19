@@ -63,22 +63,7 @@ function domainName(url: string | null): string | null {
   }
 }
 
-// Caja geográfica de España (península + islas) para descartar coincidencias absurdas
-const ES_BBOX = { minLat: 27, maxLat: 44, minLon: -18.5, maxLon: 5 };
-function inSpain(lat: number, lon: number): boolean {
-  return lat >= ES_BBOX.minLat && lat <= ES_BBOX.maxLat && lon >= ES_BBOX.minLon && lon <= ES_BBOX.maxLon;
-}
-
-// Distritos/regiones de Portugal que Photon devuelve como "state" — rechazar
-const PORTUGAL_STATES = ['viseu', 'lisboa', 'lisbon', 'porto', 'porto district', 'braga', 'coimbra', 'aveiro', 'setúbal', 'setubal', 'faro', 'guarda', 'vila real', 'bragança', 'braganca', 'viana do castelo', 'santarém', 'santarem', 'leiria', 'castelo branco', 'beja', 'évora', 'evora', 'portalegre', 'madeira', 'açores', 'azores', 'região norte', 'regiao norte', 'região centro', 'regiao centro', 'alentejo', 'algarve'];
-
-// Comunidades autónomas españolas (lo que devuelve Photon como state)
-
-function esFueraDeEspana(state: string | null): boolean {
-  if (!state) return false;
-  const s = state.toLowerCase();
-  return PORTUGAL_STATES.some((p) => s.includes(p)) || ['casablanca', 'rabat', 'tánger', 'tanger', 'marrakech', 'fès', 'fes', 'meknès', 'meknes', 'agadir', 'marruecos', 'morocco', 'alger', 'algiers', 'argelia', 'túnez', 'tunis', 'france', 'francia'].some((p) => s.includes(p));
-}
+import { fetchPythonApi } from '@/lib/python-client';
 
 interface GeoResult {
   lat: number;
@@ -88,14 +73,9 @@ interface GeoResult {
   ciudad: string | null;
 }
 
-// Caja de Galicia para priorizar resultados cuando la ciudad es gallega
-const GALICIA_BBOX = 'bbox=-9.4,41.7,-6.7,43.9';
-
 // Plataformas que entiende el workflow (Refinar Query Táctica 🎯 añade el filtro site:)
 // Google Search no genera filtro site: pero se conserva como etiqueta de canal
 const PLATAFORMAS_VALIDAS = ['LinkedIn', 'Social Media', 'Google My Business', 'Google Search'];
-
-const CIUDADES_GALLEGAS = ['santiago de compostela', 'a coruña', 'la coruña', 'vigo', 'ourense', 'orense', 'lugo', 'pontevedra', 'ferrol', 'santiago'];
 
 function normalizarPlataformas(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -116,104 +96,18 @@ function normalizarPlataformas(value: unknown): string[] {
   return [];
 }
 
-function esCiudadGallega(ciudad: string | null): boolean {
-  if (!ciudad) return false;
-  const c = ciudad.toLowerCase();
-  return CIUDADES_GALLEGAS.some((g) => c.includes(g));
-}
-
-/** Geocodifica probando varias queries: negocio, negocio+ciudad, dominio+ciudad, ciudad.
- *  Usa Photon (Komoot, OSM, sin API key) con Nominatim como respaldo.
- *  Solo acepta resultados dentro de España (el radar apunta a negocios españoles).
- *  Devuelve también comunidad autónoma y ciudad detectadas para los filtros. */
+/** Geocodifica delegando la tarea al microservicio de Python (FastAPI Sidecar) */
 async function geocode(queries: string[], cityDetectada: string | null = null): Promise<GeoResult | null> {
-  const cleanName = (s: string) => s.toLowerCase().replace(/[^a-záéíóúñü\s]/gi, '').trim();
-  const knownComunidades = ['galicia', 'país vasco', 'cataluña', 'comunidad de madrid', 'andalucía', 'comunidad valenciana', 'aragón', 'castilla y león', 'castilla-la mancha', 'extremadura', 'asturias', 'cantabria', 'la rioja', 'navarra', 'región de murcia', 'islas baleares', 'canarias'];
-
-  for (const query of queries) {
-    // Photon primero (más permisivo, sin rate limit estricto)
-    // El radar caza en Galicia: intentar SIEMPRE primero con bbox gallego.
-    // Fuera de Galicia solo si el negocio menciona explícitamente otra ciudad
-    // (p.ej. "Clínica dental en Madrid"). Sin ciudad conocida → solo Galicia,
-    // para no plantar pins falsos en homónimos (Olot/Medina de Pomar).
-    const anclajeGalicia =
-      /santiago|compostela|galicia|a coruña|vigo|ourense|lugo|pontevedra|ferrol/i.test(query) ||
-      (cityDetectada !== null && esCiudadGallega(cityDetectada));
-    const otraCiudad = cityDetectada !== null && !esCiudadGallega(cityDetectada);
-    const bboxOptions = anclajeGalicia || !otraCiudad ? ['&' + GALICIA_BBOX] : ['&' + GALICIA_BBOX, ''];
-    for (const bboxSuffix of bboxOptions) {
-      let photonOk = false;
-      try {
-        const pUrl = `https://photon.komoot.io/api/?limit=5&q=${encodeURIComponent(query)}${bboxSuffix}`;
-        const pRes = await fetch(pUrl, {
-          headers: { 'User-Agent': 'AgenciAlquimiaPanel/1.0 (admin panel geocoding)' },
-          signal: AbortSignal.timeout(6000),
-        });
-        if (pRes.ok) {
-          photonOk = true;
-          const pData = (await pRes.json()) as {
-            features?: Array<{
-              geometry: { coordinates: [number, number] };
-              properties?: { city?: string; state?: string; name?: string };
-            }>;
-          };
-          for (const feat of pData.features ?? []) {
-            const [lon, lat] = feat?.geometry?.coordinates ?? [0, 0];
-            const featState = feat?.properties?.state ?? null;
-            if (inSpain(lat, lon) && !esFueraDeEspana(featState)) {
-              const comunidadRaw = feat?.properties?.state ?? null;
-              const ciudad = feat?.properties?.city ?? null;
-              // Normalizar comunidad: Photon devuelve "Galicia" como state
-              if (comunidadRaw) {
-                const c = cleanName(comunidadRaw);
-                const known = knownComunidades.find((k) => c.includes(k) || k.includes(c));
-                const comunidad = known ? known.charAt(0).toUpperCase() + known.slice(1) : comunidadRaw;
-                return { lat, lon, match: query, comunidad, ciudad };
-              }
-              return { lat, lon, match: query, comunidad: null, ciudad };
-            }
-          }
-        }
-      } catch {
-        // siguiente intento
-      }
-      // Si Photon respondió pero sin resultados válidos en este bbox, probar el siguiente
-      if (photonOk) continue;
-      const url = `https://nominatim.openstreetmap.org/search?format=json&limit=3&q=${encodeURIComponent(query)}`;
-      try {
-        const res = await fetch(url, {
-          headers: { 'User-Agent': 'AgenciAlquimiaPanel/1.0 (admin panel geocoding)' },
-          signal: AbortSignal.timeout(6000),
-        });
-        if (res.ok) {
-          const data = (await res.json()) as Array<{
-            lat: string;
-            lon: string;
-            display_name?: string;
-          }>;
-          for (const item of data) {
-            const lat = parseFloat(item.lat);
-            const lon = parseFloat(item.lon);
-            const dn = item.display_name ?? '';
-            if (inSpain(lat, lon) && !esFueraDeEspana(dn)) {
-              // Nominatim no da ciudad/comunidad estructurada; intentar inferir del display_name
-              const parts = dn.split(',').map((p) => p.trim());
-              const ciudad = parts.slice(0, 4).find(
-                (p) =>
-                  /^(?:Santiago de Compostela|[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)*)$/.test(p) &&
-                  !['España', 'Spain'].includes(p)
-              ) ?? null;
-              return { lat, lon, match: query, comunidad: null, ciudad };
-            }
-          }
-        }
-      } catch {
-        // siguiente query
-      }
-      if (bboxSuffix === '') break;
-    }
+  try {
+    const res = await fetchPythonApi<GeoResult>('/hunter/geocode', {
+      queries,
+      city_detectada: cityDetectada,
+    });
+    return res;
+  } catch (error) {
+    console.error('[hunter geocode proxy error]:', error);
+    return null;
   }
-  return null;
 }
 
 export async function GET(request: Request) {

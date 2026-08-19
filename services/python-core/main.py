@@ -8,6 +8,7 @@ import os
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from dependencies.auth import verify_internal_signature
+from routers.hunter import router as hunter_router
 
 app = FastAPI(
     title="AgenciAlquimia Python Core API",
@@ -22,6 +23,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Incluir routers registrados
+app.include_router(hunter_router)
 
 @app.get("/health")
 async def health_check():
