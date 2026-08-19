@@ -36,3 +36,14 @@ yarn-error.log*
 # Assets legacy sin uso (conservados en disco, fuera de git)
 public/assets/videos/
 public/assets/fonts/
+
+# Python virtual environments & build artifacts
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/

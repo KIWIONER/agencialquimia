@@ -119,7 +119,7 @@ export async function verifyAdminToken(token: string): Promise<{ valid: boolean;
     }
 
     return { valid: true, payload };
-  } catch (error) {
+  } catch {
     return { valid: false };
   }
 }

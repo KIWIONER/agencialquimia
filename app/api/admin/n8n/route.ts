@@ -1,3 +1,6 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAdminToken } from '@/lib/auth';
+
 /**
  * ==============================================================================
  * Archivo: app/api/admin/n8n/route.ts
@@ -5,12 +8,8 @@
  * Descripción:
  *  Endpoint API proxy para el panel admin: lista los workflows de n8n en tiempo
  *  real (nombre, id, estado activo/inactivo) usando la API pública de n8n.
- *
- *  Requiere en el entorno: N8N_API_URL y N8N_API_KEY (ver .env.local).
  * ==============================================================================
  */
-
-import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +19,14 @@ interface N8nWorkflow {
   active: boolean;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Verificación de seguridad Defense-in-depth
+  const token = request.cookies.get('admin_session')?.value;
+  const { valid } = await verifyAdminToken(token ?? '');
+  if (!valid) {
+    return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
+  }
+
   const apiUrl = process.env.N8N_API_URL;
   const apiKey = process.env.N8N_API_KEY;
 
@@ -35,36 +41,37 @@ export async function GET() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    const res = await fetch(`${apiUrl.replace(/\/$/, '')}/workflows?limit=250`, {
-      headers: { 'X-N8N-API-KEY': apiKey },
+    const res = await fetch(`${apiUrl.replace(/\/$/, '')}/workflows`, {
+      headers: {
+        'X-N8N-API-KEY': apiKey,
+      },
       signal: controller.signal,
-      cache: 'no-store',
     });
 
     clearTimeout(timeoutId);
 
     if (!res.ok) {
-      throw new Error(`n8n API respondió ${res.status}`);
+      return NextResponse.json(
+        { success: false, error: `n8n devolvió estado ${res.status}` },
+        { status: res.status }
+      );
     }
 
-    const json = await res.json();
-    const workflows: N8nWorkflow[] = (json.data ?? []).map(
-      (w: { id: string; name: string; active: boolean }) => ({
-        id: w.id,
-        name: w.name,
-        active: w.active,
-      })
-    );
+    const data = (await res.json()) as { data?: N8nWorkflow[] };
+    const list = data.data ?? [];
 
-    return NextResponse.json({
-      success: true,
-      workflows,
-      total: workflows.length,
-      activeCount: workflows.filter((w) => w.active).length,
-    });
+    const workflows = list.map((w) => ({
+      id: w.id,
+      name: w.name,
+      active: w.active,
+    }));
+
+    return NextResponse.json({ success: true, workflows });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Error al conectar con n8n';
-    console.warn('[n8n API Warning]:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 502 });
+    console.error('[n8n workflows proxy error]:', error);
+    return NextResponse.json(
+      { success: false, error: 'Error al conectar con la API de n8n' },
+      { status: 502 }
+    );
   }
 }

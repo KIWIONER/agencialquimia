@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAdminToken } from '@/lib/auth';
 
 /**
  * ==============================================================================
@@ -27,7 +28,14 @@ const CANDIDATE_TABLES = [
   'radar_queries',
 ];
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Verificación de seguridad Defense-in-depth
+  const token = request.cookies.get('admin_session')?.value;
+  const { valid } = await verifyAdminToken(token ?? '');
+  if (!valid) {
+    return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
+  }
+
   const supabaseUrl = process.env.PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 

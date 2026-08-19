@@ -8,9 +8,10 @@
  * 
  * Beneficios de Seguridad & Arquitectura:
  *  1. Ocultación de Directivas de Sistema: Inyecta las instrucciones de comportamiento
- *     del bot en el servidor, evitando que el usuario las manipule desde DevTools (Prompt Injection).
+ *     del bot en el servidor, evitando manipulación (Prompt Injection).
  *  2. Ocultación de Endpoints Privados: La URL real del webhook de n8n no se expone al navegador.
- *  3. Resiliencia & Timeout: Cancela peticiones colgadas tras 8 segundos y devuelve un enlace
+ *  3. Rate Limiting por IP: Previene abuso y consumo descontrolado de tokens de IA.
+ *  4. Resiliencia & Timeout: Cancela peticiones colgadas tras 8 segundos y devuelve un enlace
  *     de fallback a WhatsApp de manera limpia.
  * ==============================================================================
  */
@@ -25,11 +26,46 @@ const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'https://cerebro.agencial
 const WHATSAPP_FALLBACK_URL =
   'https://wa.me/34604051111?text=Hola%20Mat%C3%ADas,%20estoy%20interesado%20en%20los%20servicios%20de%20AgenciAlquimia';
 
+/** Rate limiter in-memory (máximo 15 mensajes por minuto por IP) */
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_MAX = 15;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minuto
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry || now > entry.resetTime) {
+    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX) {
+    return true;
+  }
+
+  entry.count += 1;
+  return false;
+}
+
 /**
  * Manejador HTTP POST para procesar las consultas del chat
  */
 export async function POST(req: NextRequest) {
   try {
+    // Control de Rate Limiting por IP
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anonymous';
+    if (isRateLimited(clientIp)) {
+      return NextResponse.json<ChatResponseData>(
+        {
+          response: 'Has enviado demasiados mensajes en poco tiempo. Por favor, espera un momento o contáctanos por WhatsApp.',
+          error: 'TOO_MANY_REQUESTS',
+          fallbackUrl: WHATSAPP_FALLBACK_URL,
+        },
+        { status: 429 }
+      );
+    }
+
     // Extracción del cuerpo JSON recibido desde el componente ChatWidget
     const body: ChatRequestPayload = await req.json();
     const { message, sessionId, history = [] } = body;

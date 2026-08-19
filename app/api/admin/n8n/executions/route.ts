@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAdminToken } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -6,7 +7,14 @@ export const dynamic = 'force-dynamic';
  * GET /api/admin/n8n/executions?workflowId=<id>&limit=<n>
  * Proxy hacia la API pública de n8n: historial de ejecuciones (para el panel de chat).
  */
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  // Verificación de seguridad Defense-in-depth
+  const token = request.cookies.get('admin_session')?.value;
+  const { valid } = await verifyAdminToken(token ?? '');
+  if (!valid) {
+    return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
+  }
+
   const apiUrl = process.env.N8N_API_URL;
   const apiKey = process.env.N8N_API_KEY;
   if (!apiUrl || !apiKey) {
@@ -33,21 +41,16 @@ export async function GET(request: Request) {
     clearTimeout(timeout);
 
     if (!res.ok) {
-      return NextResponse.json({ success: false, error: `n8n respondió ${res.status}` }, { status: 502 });
+      return NextResponse.json(
+        { success: false, error: `n8n status ${res.status}` },
+        { status: res.status }
+      );
     }
 
-    const json = await res.json();
-    const data = (json.data ?? []).map((e: Record<string, unknown>) => ({
-      id: e.id,
-      status: e.status,
-      startedAt: e.startedAt,
-      stoppedAt: e.stoppedAt,
-      mode: e.mode,
-    }));
-
-    return NextResponse.json({ success: true, executions: data });
+    const data = await res.json();
+    return NextResponse.json({ success: true, data });
   } catch (err) {
-    console.error('[n8n executions] error', err);
-    return NextResponse.json({ success: false, error: 'Error de red con n8n' }, { status: 502 });
+    console.error('[n8n/executions error]:', err);
+    return NextResponse.json({ success: false, error: 'Error de red' }, { status: 502 });
   }
 }

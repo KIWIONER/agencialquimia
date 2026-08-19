@@ -73,7 +73,6 @@ function inSpain(lat: number, lon: number): boolean {
 const PORTUGAL_STATES = ['viseu', 'lisboa', 'lisbon', 'porto', 'porto district', 'braga', 'coimbra', 'aveiro', 'setúbal', 'setubal', 'faro', 'guarda', 'vila real', 'bragança', 'braganca', 'viana do castelo', 'santarém', 'santarem', 'leiria', 'castelo branco', 'beja', 'évora', 'evora', 'portalegre', 'madeira', 'açores', 'azores', 'região norte', 'regiao norte', 'região centro', 'regiao centro', 'alentejo', 'algarve'];
 
 // Comunidades autónomas españolas (lo que devuelve Photon como state)
-const ES_COMUNIDADES = ['galicia', 'país vasco', 'pais vasco', 'euskadi', 'cataluña', 'cataluna', 'comunidad de madrid', 'madrid', 'andalucía', 'andalucia', 'comunidad valenciana', 'valenciana', 'aragón', 'aragon', 'castilla y león', 'castilla y leon', 'castilla-la mancha', 'castilla la mancha', 'extremadura', 'asturias', 'principado de asturias', 'cantabria', 'la rioja', 'navarra', 'región de murcia', 'region de murcia', 'murcia', 'islas baleares', 'baleares', 'canarias'];
 
 function esFueraDeEspana(state: string | null): boolean {
   if (!state) return false;
@@ -427,7 +426,6 @@ export async function POST(request: Request) {
 
       const apiUrl = process.env.N8N_API_URL ?? '';
       const webhookBase = apiUrl.replace(/\/api\/v1\/?$/, '');
-      const telefonoMatias = process.env.ADMIN_WHATSAPP_DESTINO ?? '34657738334';
 
       // Contexto del negocio para que Max redacte un mensaje personalizado
       const nombre = String(negocio.nombre ?? '');

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyAdminToken } from '@/lib/auth';
 
 /**
  * ==============================================================================
@@ -13,6 +14,13 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  // Verificación de seguridad Defense-in-depth
+  const token = request.cookies.get('admin_session')?.value;
+  const { valid } = await verifyAdminToken(token ?? '');
+  if (!valid) {
+    return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const table = searchParams.get('table') || 'leads';
   const limit = parseInt(searchParams.get('limit') || '100', 10);
@@ -43,10 +51,10 @@ export async function GET(request: NextRequest) {
     const response = await fetch(targetUrl, {
       method: 'GET',
       headers: {
-        'apikey': anonKey,
-        'Authorization': `Bearer ${anonKey}`,
-        'Accept': 'application/json',
-        'Prefer': 'count=exact',
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'count=exact',
       },
       signal: controller.signal,
     });
@@ -54,24 +62,27 @@ export async function GET(request: NextRequest) {
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      throw new Error(`PostgREST retornó código ${response.status}: ${response.statusText}`);
+      throw new Error(`Supabase devolvió HTTP ${response.status}`);
     }
 
     const data = await response.json();
     const contentRange = response.headers.get('content-range');
-    const totalCount = contentRange ? parseInt(contentRange.split('/')[1] || '0', 10) : data.length;
+    let totalCount = Array.isArray(data) ? data.length : 0;
+
+    if (contentRange) {
+      const parts = contentRange.split('/');
+      if (parts[1] && parts[1] !== '*') {
+        totalCount = parseInt(parts[1], 10);
+      }
+    }
 
     return NextResponse.json({
       success: true,
       table,
-      data,
+      data: Array.isArray(data) ? data : [],
       count: totalCount,
-      isFallback: false,
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Error al conectar con Supabase';
-    console.warn(`[Supabase Data API Warning for table '${table}']:`, errorMessage);
-
+  } catch {
     const mockData = getMockDataForTable(table);
     return NextResponse.json({
       success: true,
@@ -79,23 +90,19 @@ export async function GET(request: NextRequest) {
       data: mockData,
       count: mockData.length,
       isFallback: true,
-      error: errorMessage,
+      message: 'Error al consultar Supabase. Mostrando datos de respaldo.',
     });
   }
 }
 
 function getMockDataForTable(table: string): Record<string, unknown>[] {
-  if (table === 'consultas' || table === 'interacciones') {
+  if (table.includes('lead')) {
     return [
-      { id: '1', usuario: 'Matías I.', mensaje: '¿Cómo automatizar mi clínica?', respuesta: 'Te enviamos la info.', canal: 'Chat Web', fecha: '2026-08-16 14:00' },
-      { id: '2', usuario: 'Laura V.', mensaje: 'Presupuesto chatbot restaurantes', respuesta: 'Agendada demo.', canal: 'WhatsApp', fecha: '2026-08-15 19:30' },
+      { id: '1', nombre: 'Clínica Dental Galicia', email: 'contacto@clinicagalicia.es', estado: 'Pendiente', created_at: '2026-08-15' },
+      { id: '2', nombre: 'Restaurante O Lado', email: 'reservas@olado.gal', estado: 'Contactado', created_at: '2026-08-14' },
     ];
   }
-
   return [
-    { id: '1', nombre: 'Carlos Ruiz', sector: 'Retail', contacto: 'carlos@tienda.es', estado: 'Pendiente', fecha: 'Hoy, 10:30' },
-    { id: '2', nombre: 'Lucía Fer', sector: 'Wellness', contacto: '+34 600 123 456', estado: 'Enviado a IA', fecha: 'Ayer, 18:20' },
-    { id: '3', nombre: 'Juan Gómez', sector: 'Inmobiliaria', contacto: 'juan@prop.com', estado: 'Finalizado', fecha: '22 Abr' },
-    { id: '4', nombre: 'Elena Blanco', sector: 'Salud', contacto: '+34 604 555 888', estado: 'Enviado a IA', fecha: 'Hace 2 horas' },
+    { id: '1', sistema: 'AgenciAlquimia Core', estado: 'Activo', mensaje: 'Sistema funcionando correctamente' },
   ];
 }
