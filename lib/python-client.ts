@@ -42,3 +42,24 @@ export async function fetchPythonApi<T>(path: string, payload: unknown): Promise
 
   return res.json() as Promise<T>;
 }
+
+export async function fetchPythonApiBuffer(path: string, payload: unknown): Promise<Buffer> {
+  const bodyString = JSON.stringify(payload);
+  const signature = crypto.createHmac('sha256', SECRET).update(bodyString).digest('hex');
+
+  const res = await fetch(`${PYTHON_SERVICE_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Internal-Signature': signature,
+    },
+    body: bodyString,
+  });
+
+  if (!res.ok) {
+    throw new Error(`Python Service error: ${res.status}`);
+  }
+
+  const arrayBuffer = await res.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}

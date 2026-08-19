@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Auditoría de IA - AgenciAlquimia</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+    
+    @page {
+      size: A4;
+      margin: 0;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      color: #1e293b;
+      background-color: #ffffff;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact;
+    }
+    
+    .page {
+      width: 210mm;
+      height: 297mm;
+      position: relative;
+      page-break-after: always;
+      box-sizing: border-box;
+      padding: 20mm 15mm;
+      background: #ffffff;
+    }
+    
+    /* Decoración de Bordes Premium */
+    .page::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(90deg, #10b981, #059669);
+    }
+    
+    /* Encabezado */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 6px;
+      margin-bottom: 12mm;
+    }
+    
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .logo-box {
+      width: 24px;
+      height: 24px;
+      background: linear-gradient(135deg, #10b981, #047857);
+      border-radius: 6px;
+    }
+    
+    .logo-text {
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: -0.5px;
+      color: #0b0d10;
+    }
+    
+    .doc-type {
+      font-size: 10px;
+      font-weight: 700;
+      color: #64748b;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    
+    /* Pie de página */
+    footer {
+      position: absolute;
+      bottom: 15mm;
+      left: 15mm;
+      right: 15mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 8px;
+      font-size: 9px;
+      color: #94a3b8;
+    }
+    
+    .footer-brand {
+      font-weight: 600;
+      color: #64748b;
+    }
+    
+    /* Contenido de Portada */
+    .title-area {
+      margin-top: 10mm;
+      margin-bottom: 12mm;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 6px 12px;
+      background-color: #ecfdf5;
+      color: #047857;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1.25;
+      color: #0b0d10;
+      margin: 0 0 10px 0;
+      letter-spacing: -0.8px;
+    }
+    
+    .subtitle {
+      font-size: 14px;
+      color: #475569;
+      margin: 0;
+    }
+    
+    /* Ficha del Lead */
+    .info-card {
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 18px;
+      margin-bottom: 15mm;
+    }
+    
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    
+    .info-item {
+      font-size: 12px;
+    }
+    
+    .info-label {
+      color: #64748b;
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+    
+    .info-value {
+      color: #0b0d10;
+      font-weight: 700;
+    }
+    
+    /* Medidor de Score */
+    .score-container {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      margin-bottom: 12mm;
+    }
+    
+    .score-circle {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: conic-gradient(#10b981 var(--score-percent), #e2e8f0 var(--score-percent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 0 0 12px #ffffff;
+      position: relative;
+    }
+    
+    .score-number {
+      font-size: 22px;
+      font-weight: 800;
+      color: #0b0d10;
+    }
+    
+    .score-text {
+      flex: 1;
+    }
+    
+    .score-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0b0d10;
+      margin-bottom: 4px;
+    }
+    
+    .score-desc {
+      font-size: 12px;
+      color: #475569;
+      line-height: 1.4;
+    }
+    
+    /* Sección Oportunidad */
+    .opportunity-section {
+      background-color: #f0fdf4;
+      border-left: 4px solid #10b981;
+      padding: 16px;
+      border-radius: 4px 12px 12px 4px;
+    }
+    
+    .opp-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #047857;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    
+    .opp-desc {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #065f46;
+      margin: 0;
+    }
+    
+    /* PAGE 2: TABLA DE PUNTOS DE ACCIÓN */
+    .table-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0b0d10;
+      margin: 0 0 12px 0;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 12mm;
+    }
+    
+    th {
+      background-color: #0b0d10;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: left;
+      padding: 8px 12px;
+      letter-spacing: 0.5px;
+    }
+    
+    th:first-child {
+      border-radius: 6px 0 0 6px;
+    }
+    
+    th:last-child {
+      border-radius: 0 6px 6px 0;
+    }
+    
+    td {
+      padding: 10px 12px;
+      font-size: 12px;
+      line-height: 1.4;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: top;
+    }
+    
+    .td-issue {
+      font-weight: 700;
+      color: #0b0d10;
+      width: 35%;
+    }
+    
+    .td-sol {
+      color: #334155;
+    }
+    
+    /* Propuesta Final */
+    .proposal-box {
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 15mm;
+    }
+    
+    .proposal-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0b0d10;
+      margin-bottom: 6px;
+    }
+    
+    .proposal-text {
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: #334155;
+      margin: 0;
+    }
+    
+    /* Firma del Consultor */
+    .sign-block {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 15mm;
+    }
+    
+    .sign-info {
+      font-size: 12px;
+    }
+    
+    .sign-name {
+      font-weight: 700;
+      color: #0b0d10;
+      margin-bottom: 2px;
+    }
+    
+    .sign-role {
+      color: #64748b;
+    }
+    
+    .sign-contact {
+      color: #10b981;
+      margin-top: 6px;
+      font-weight: 500;
+    }
+    
+    .sign-graphic {
+      text-align: right;
+    }
+    
+    .sign-line {
+      width: 45mm;
+      border-bottom: 1px solid #94a3b8;
+      margin-bottom: 4px;
+    }
+    
+    .sign-caption {
+      font-size: 10px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== PÁGINA 1: PORTADA E INTRODUCCIÓN ==================== -->
+  <section class="page">
+    <header>
+      <div class="logo-container">
+        <div class="logo-box"></div>
+        <span class="logo-text">AgenciAlquimia</span>
+      </div>
+      <span class="doc-type">Reporte de Auditoría</span>
+    </header>
+    
+    <div class="title-area">
+      <div class="badge">Auditoría de Canales e IA</div>
+      <h1>Análisis de Optimización y<br>Potencial de Automatización</h1>
+      <p class="subtitle">Evaluación técnica y oportunidades de crecimiento comercial mediante Inteligencia Artificial.</p>
+    </div>
+    
+    <div class="info-card">
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-label">Empresa Analizada</div>
+          <div class="info-value">{{ name }}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Canal / Sitio Web</div>
+          <div class="info-value">{{ url }}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Sector Comercial</div>
+          <div class="info-value">{{ sector }}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Ubicación y Cobertura</div>
+          <div class="info-value">{{ ubicacion }}</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="score-container">
+      <div class="score-circle" style="--score-percent: {{ score }}%">
+        <span class="score-number">{{ score }}</span>
+      </div>
+      <div class="score-text">
+        <div class="score-title">Índice de Eficiencia y Nivel Digital</div>
+        <div class="score-desc">El puntaje refleja el estado actual de tus canales digitales en captación de leads, atención de prospectos y optimización de flujos comerciales. Un valor inferior a 80 indica margen significativo de automatización.</div>
+      </div>
+    </div>
+    
+    <div class="opportunity-section">
+      <div class="opp-title">🎯 Diagnóstico Comercial y Potencial</div>
+      <p class="opp-desc">{{ potencial }}</p>
+    </div>
+    
+    <footer>
+      <span class="footer-brand">AgenciAlquimia</span>
+      <span>Página 1 de 2</span>
+    </footer>
+  </section>
+
+  <!-- ==================== PÁGINA 2: ACCIONES Y PROPUESTA ==================== -->
+  <section class="page">
+    <header>
+      <div class="logo-container">
+        <div class="logo-box"></div>
+        <span class="logo-text">AgenciAlquimia</span>
+      </div>
+      <span class="doc-type">Acciones de Mejora</span>
+    </header>
+    
+    <h2 class="table-title">Puntos de Acción Críticos y Soluciones Propuestas</h2>
+    
+    <table>
+      <thead>
+        <tr>
+          <th>Puntos Críticos Detectados</th>
+          <th>Solución de Automatización e Inteligencia Artificial</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in fallos %}
+        <tr>
+          <td class="td-issue">⚠️ {{ item.nombre }}</td>
+          <td class="td-sol">{{ item.solucion }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    
+    <div class="proposal-box">
+      <div class="proposal-title">💡 Nuestra recomendación estratégica</div>
+      <p class="proposal-text">Para cerrar las fugas de leads detectadas, sugerimos implementar un **Agente IA Conversacional Avanzado** entrenado a la medida de tu negocio. Responderá consultas complejas 24/7 sobre tus servicios, agendará citas automáticamente en tu calendario de Google y enviará recordatorios automáticos por WhatsApp, liberando hasta un 80% del tiempo de atención comercial.</p>
+    </div>
+    
+    <div class="sign-block">
+      <div class="sign-info">
+        <div class="sign-name">Matías Idiart Viera</div>
+        <div class="sign-role">Director de Tecnología, AgenciAlquimia</div>
+        <div class="sign-contact">hola@agencialquimia.com &bull; +34 604 051 111</div>
+      </div>
+      <div class="sign-graphic">
+        <div class="sign-line"></div>
+        <div class="sign-caption">Firma Autorizada</div>
+      </div>
+    </div>
+    
+    <footer>
+      <span class="footer-brand">AgenciAlquimia &bull; Santiago de Compostela</span>
+      <span>Página 2 de 2</span>
+    </footer>
+  </section>
+
+</body>
+</html>

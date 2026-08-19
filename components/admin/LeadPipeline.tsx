@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   X,
   RefreshCw,
+  FileText,
 } from 'lucide-react';
 
 interface LeadRow {
@@ -68,6 +69,38 @@ export default function LeadPipeline() {
   const [dragging, setDragging] = useState<LeadRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+
+  const handleGenerateAudit = async (leadId: number) => {
+    setGeneratingPdf(true);
+    try {
+      const res = await fetch('/api/admin/hunter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'generate-audit', leadId }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.message ?? 'Error al generar la auditoría');
+      }
+
+      // Descargar el archivo PDF
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `auditoria_${(selected?.cliente_nombre || 'lead').replace(/\s+/g, '_')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al generar el reporte PDF');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
 
   const fetchLeads = async () => {
     setLoading(true);
@@ -253,6 +286,27 @@ export default function LeadPipeline() {
             {selected.etapa_actualizada_en && (
               <p className="text-slate-500">Última etapa: {fmtFecha(selected.etapa_actualizada_en)}</p>
             )}
+          </div>
+
+          {/* Sección de Auditoría PDF */}
+          <div className="mt-4 pt-3 border-t border-slate-800">
+            <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Auditoría IA</h5>
+            <button
+              type="button"
+              disabled={generatingPdf}
+              onClick={() => handleGenerateAudit(selected.id)}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500 text-slate-950 text-xs font-bold hover:bg-emerald-400 disabled:opacity-50 transition-colors shadow-lg shadow-emerald-500/10"
+            >
+              {generatingPdf ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Generando...
+                </>
+              ) : (
+                <>
+                  <FileText className="w-3.5 h-3.5" /> Descargar Reporte PDF
+                </>
+              )}
+            </button>
           </div>
 
           {/* Navegación de etapa */}

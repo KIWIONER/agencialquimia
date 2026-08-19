@@ -63,7 +63,7 @@ function domainName(url: string | null): string | null {
   }
 }
 
-import { fetchPythonApi } from '@/lib/python-client';
+import { fetchPythonApi, fetchPythonApiBuffer } from '@/lib/python-client';
 
 interface GeoResult {
   lat: number;
@@ -381,6 +381,72 @@ DATOS DEL NEGOCIO:\n${datos}`;
     } catch (err) {
       console.error('[hunter/generar] error', err);
       return NextResponse.json({ message: 'Error generando el mensaje con Max' }, { status: 502 });
+    }
+  }
+
+  if (action === 'generate-audit') {
+    try {
+      const { leadId } = body as { leadId?: string };
+      if (!leadId) {
+        return NextResponse.json({ message: 'Falta el id del lead' }, { status: 400 });
+      }
+
+      // 1. Obtener datos del lead de la base de datos
+      const leadRes = await pool.query(
+        'SELECT id, cliente_nombre, cliente_correo, cliente_telefono, empresa, sector, problema, url_web, ciudad, comunidad FROM leads_agencialquimia WHERE id = $1',
+        [leadId]
+      );
+      const lead = leadRes.rows[0];
+      if (!lead) {
+        return NextResponse.json({ message: 'Lead no encontrado' }, { status: 404 });
+      }
+
+      // 2. Calcular score y recomendaciones en el microservicio Python
+      const scoringPayload = {
+        negocio: lead.cliente_nombre || lead.empresa || 'Negocio Local',
+        url: lead.url_web || '',
+        sector: lead.sector || '',
+        email: lead.cliente_correo || '',
+        telefono: lead.cliente_telefono || '',
+        fallos_detectados: lead.problema ? [lead.problema] : [],
+        tech_stack: []
+      };
+
+      const scoreRes = await fetchPythonApi<{
+        score: number;
+        grade: string;
+        recomendaciones: string[];
+        potencial_venta: string;
+      }>('/scoring/calculate', scoringPayload);
+
+      // 3. Generar auditoría en PDF en el microservicio Python
+      const pdfPayload = {
+        name: lead.cliente_nombre || lead.empresa || 'Negocio Local',
+        url: lead.url_web || 'Sin web',
+        sector: lead.sector || 'General',
+        ubicacion: [lead.ciudad, lead.comunidad].filter(Boolean).join(', ') || 'Galicia, España',
+        score: scoreRes.score,
+        potencial: scoreRes.potencial_venta,
+        fallos: scoreRes.recomendaciones.map((r, i) => ({
+          nombre: `Punto de mejora #${i+1}`,
+          solucion: r
+        }))
+      };
+
+      const pdfBuffer = await fetchPythonApiBuffer('/pdf/generate', pdfPayload);
+
+      // 4. Retornar el PDF directamente al cliente
+      const filename = `auditoria_${(lead.cliente_nombre || 'negocio').replace(/\s+/g, '_')}.pdf`;
+      return new NextResponse(new Uint8Array(pdfBuffer), {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+        },
+      });
+
+    } catch (err) {
+      console.error('hunter generate-audit error:', err);
+      return NextResponse.json({ message: 'Error al generar la auditoría PDF' }, { status: 500 });
     }
   }
 
