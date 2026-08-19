@@ -74,6 +74,9 @@ El proyecto se encuentra 100% migrado, corregido y unificado bajo un único ecos
 ├── public/                     # Recursos estáticos servidos nativamente por Next.js (assets, favicons)
 ├── lib/                        # Utilidades centralizadas (metadata.ts para SEO)
 ├── types/                      # Interfaces TypeScript strictly (chat.ts)
+├── services/                   # Microservicios auxiliares sidecar de AgenciAlquimia
+│   └── python-core/            # Microservicio FastAPI de alto rendimiento (scraping, scoring)
+├── docs/                       # Documentación y planos detallados de integración
 ├── next.config.mjs             # Configuración de compilación SWC y compresión Brotli/Gzip
 ├── .env.local / .env.example   # Variables de entorno parametrizadas (N8N_WEBHOOK_URL)
 ├── .github/                    # Planes de implementación (implementation-plan.md)
