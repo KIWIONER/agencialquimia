@@ -146,7 +146,7 @@ Normaliza números prefijados gallegos (981, 982, 986, 881, etc.) y detecta núm
 
 ### 📊 Estado de Avance por Fases
 - [x] **Fase 1: Estructuración del Microservicio Base (FastAPI)** - *Completado y Validado*
-- [ ] **Fase 2: Módulo de Seguridad Inter-Servicio y Cliente Next.js** - *Pendiente (En curso)*
+- [x] **Fase 2: Módulo de Seguridad Inter-Servicio y Cliente Next.js** - *Completado y Validado*
 - [ ] **Fase 3: Migración e Integración del Módulo Hunter** - *Pendiente*
 - [ ] **Fase 4: Auditorías PDF y Lead Scoring** - *Pendiente*
 - [ ] **Fase 5: Validación, Testing y Despliegue en Coolify** - *Pendiente*
