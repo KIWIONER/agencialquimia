@@ -384,6 +384,23 @@ DATOS DEL NEGOCIO:\n${datos}`;
     }
   }
 
+  if (action === 'calculate-score') {
+    try {
+      const { payload } = body as { payload?: unknown };
+      const scoreRes = await fetchPythonApi<{
+        score: number;
+        grade: string;
+        recomendaciones: string[];
+        potencial_venta: string;
+      }>('/scoring/calculate', payload ?? body);
+
+      return NextResponse.json({ ok: true, scoring: scoreRes });
+    } catch (err) {
+      console.error('hunter calculate-score error:', err);
+      return NextResponse.json({ message: 'Error al calcular score' }, { status: 500 });
+    }
+  }
+
   if (action === 'generate-audit') {
     try {
       const { leadId } = body as { leadId?: string };
