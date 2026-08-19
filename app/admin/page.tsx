@@ -23,7 +23,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { Users, Bot, TrendingUp, Shield, Settings, LayoutDashboard, Database, UserCheck, FolderGit2, LogOut, Bell, Send, ExternalLink, Workflow, MessageSquare, Crosshair } from 'lucide-react';
+import { Users, Bot, Settings, LayoutDashboard, Database, UserCheck, FolderGit2, LogOut, Bell, ExternalLink, Workflow, MessageSquare, Crosshair, Shield } from 'lucide-react';
 import { DataTable } from '../../components/admin/DataTable';
 import { DashboardSummary, type AdminTab } from '../../components/admin/DashboardSummary';
 import LeadPipeline from '../../components/admin/LeadPipeline';
@@ -41,37 +41,14 @@ const HunterMap = dynamic(() => import('../../components/admin/HunterMap').then(
   ),
 });
 
-interface LeadItem {
-  id: string;
-  nombre: string;
-  sector: string;
-  contacto: string;
-  estado: 'Pendiente' | 'Enviado a IA' | 'Finalizado';
-  fecha: string;
-}
+
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [notifications, setNotifications] = useState(true);
 
-  // Estados para el Chat IA (OpenClaw)
-  const [chatInput, setChatInput] = useState('');
   
-  type ChatMessage = { role: 'user' | 'ai', text: string };
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { role: 'ai', text: 'Hola 👋 Soy Max, tu asistente personal. Escríbeme y te respondo por WhatsApp con mi modelo (Gemini 2.5 Pro).' },
-  ]);
-  const [chatLoading, setChatLoading] = useState(false);
-  const [sessionId, setSessionId] = useState<string>(() => `panel_${Date.now()}`);
-
-  // Estado local para los prospectos/leads recibidos
-  const [leads] = useState<LeadItem[]>([
-    { id: '1', nombre: 'Carlos Ruiz', sector: 'Retail', contacto: 'carlos@tienda.es', estado: 'Pendiente', fecha: 'Hoy, 10:30' },
-    { id: '2', nombre: 'Lucía Fer', sector: 'Wellness', contacto: '+34 600 123 456', estado: 'Enviado a IA', fecha: 'Ayer, 18:20' },
-    { id: '3', nombre: 'Juan Gómez', sector: 'Inmobiliaria', contacto: 'juan@prop.com', estado: 'Finalizado', fecha: '22 Abr' },
-    { id: '4', nombre: 'Elena Blanco', sector: 'Salud', contacto: '+34 604 555 888', estado: 'Enviado a IA', fecha: 'Hace 2 horas' },
-  ]);
 
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [prospectosView, setProspectosView] = useState<'pipeline' | 'tabla'>('pipeline');
@@ -90,48 +67,6 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim() || chatLoading) return;
-
-    const newUserMsg: ChatMessage = { role: 'user', text: chatInput };
-    setChatMessages((prev: ChatMessage[]) => [...prev, newUserMsg]);
-    setChatInput('');
-    setChatLoading(true);
-
-    try {
-      // Chat real con el agente (webhook de n8n vía proxy admin)
-      const res = await fetch('/api/admin/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatInput: newUserMsg.text, sessionId, viaWhatsapp: true }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message ?? 'Error');
-      if (data.viaWhatsapp) {
-        setChatMessages((prev: ChatMessage[]) => [
-          ...prev,
-          { role: 'ai', text: '📱 Mensaje enviado a Max — te responde por WhatsApp con el modelo de su workflow (Gemini 2.5 Pro).' },
-        ]);
-      } else {
-        setChatMessages((prev: ChatMessage[]) => [...prev, { role: 'ai', text: data.response }]);
-      }
-    } catch (err) {
-      setChatMessages((prev: ChatMessage[]) => [
-        ...prev,
-        { role: 'ai', text: `⚠️ Error al contactar con el agente: ${err instanceof Error ? err.message : 'desconocido'}` },
-      ]);
-    } finally {
-      setChatLoading(false);
-    }
-  };
-
-  // Reinicia la conversación con un sessionId nuevo (el agente olvida el hilo)
-  const nuevaConversacion = () => {
-    setSessionId(`panel_${Date.now()}`);
-    setChatMessages([{ role: 'ai', text: 'Hola 👋 Soy Max, tu asistente personal. Escríbeme y te respondo por WhatsApp con mi modelo (Gemini 2.5 Pro).' }]);
-  };
-
   if (!mounted) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-slate-400">
@@ -141,313 +76,345 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <>
-      {/* Mensaje de bloqueo para versiones móviles */}
-      <div className="flex md:hidden min-h-screen bg-slate-950 flex-col items-center justify-center p-6 text-center space-y-4">
-        <Shield className="w-16 h-16 text-emerald-500" />
-        <h2 className="text-2xl font-bold text-white">Acceso Restringido</h2>
-        <p className="text-slate-400 text-sm max-w-sm">
-          Por motivos de seguridad y usabilidad, el panel de administración solo está disponible en dispositivos de escritorio y pantallas grandes.
-        </p>
-      </div>
-
-      {/* Panel Administrativo completo (visible solo a partir de md) */}
-      <div className="hidden md:flex min-h-screen bg-slate-950 text-slate-100 font-sans w-full">
-        {/* Sidebar Lateral de Navegación del Panel Admin */}
-      <aside className="w-64 bg-slate-900 border-r border-slate-800 p-6 flex flex-col justify-between shrink-0">
-        <div className="space-y-8">
-          {/* Logo Corporativo del Admin */}
-          <div className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Shield className="w-7 h-7 text-emerald-500" />
-            <span>
-              Agenci<span className="text-emerald-500">Alquimia</span>
-            </span>
+    <div className="min-h-screen bg-[#0b0d10] text-slate-100 font-sans flex flex-col md:flex-row">
+      {/* ========================================================================
+          SIDEBAR DE NAVEGACIÓN LATERAL
+         ======================================================================== */}
+      <aside className="w-full md:w-64 bg-slate-900/60 border-b md:border-b-0 md:border-r border-slate-800/80 p-5 flex flex-col justify-between shrink-0">
+        <div>
+          {/* Logo y Nombre del Panel */}
+          <div className="flex items-center gap-3 px-2 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-slate-950 font-bold shadow-lg shadow-emerald-500/20">
+              <Bot className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="font-extrabold text-lg text-white tracking-tight block">AgenciAlquimia</span>
+              <span className="text-[11px] text-emerald-400 font-mono block">PANEL DE CONTROL</span>
+            </div>
           </div>
 
-          {/* Menú de Navegación Lateral */}
-          <nav className="space-y-2">
+          {/* Menú de Opciones */}
+          <nav className="space-[#1px] space-y-1">
             <button
               type="button"
               onClick={() => setActiveTab('dashboard')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
                 activeTab === 'dashboard'
-                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
               }`}
             >
-              <LayoutDashboard className="w-5 h-5" />
-              <span>Dashboard</span>
+              <LayoutDashboard className="w-4 h-4" />
+              <span>Resumen General</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('leads')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
-                activeTab === 'leads'
-                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-              }`}
-            >
-              <Users className="w-5 h-5" />
-              <span>Prospectos (Leads)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('supabase')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
-                activeTab === 'supabase'
-                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-              }`}
-            >
-              <FolderGit2 className="w-5 h-5" />
-              <span>Tablas Supabase</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('n8n')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
-                activeTab === 'n8n'
-                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-              }`}
-            >
-              <Workflow className="w-5 h-5" />
-              <span>Workflows n8n</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('inbox')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
-                activeTab === 'inbox'
-                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-              }`}
-            >
-              <MessageSquare className="w-5 h-5" />
-              <span>Clientes (Inbox)</span>
-            </button>
+
             <button
               type="button"
               onClick={() => setActiveTab('hunter')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
                 activeTab === 'hunter'
-                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
               }`}
             >
-              <Crosshair className="w-5 h-5" />
-              <span>Hunter (Radar)</span>
+              <Crosshair className="w-4 h-4" />
+              <span>Lead Hunter 🗺️</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('leads')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                activeTab === 'leads'
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Pipeline & Captación</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('inbox')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                activeTab === 'inbox'
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>Inbox de Clientes</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('n8n')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                activeTab === 'n8n'
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              }`}
+            >
+              <Workflow className="w-4 h-4 text-emerald-400" />
+              <span>Workflows n8n</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveTab('trainer')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
                 activeTab === 'trainer'
-                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
               }`}
             >
-              <Bot className="w-5 h-5" />
-              <span>IA Trainer</span>
+              <Bot className="w-4 h-4" />
+              <span>Chat con Max (IA)</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('supabase')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                activeTab === 'supabase'
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+              }`}
+            >
+              <Database className="w-4 h-4 text-emerald-400" />
+              <span>Tablas Supabase</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveTab('settings')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
                 activeTab === 'settings'
-                  ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
               }`}
             >
-              <Settings className="w-5 h-5" />
+              <Settings className="w-4 h-4" />
               <span>Configuración</span>
             </button>
-            
-            <div className="pt-4 mt-2 border-t border-slate-800">
-              <Link
-                href="/"
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors cursor-pointer text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-              >
-                <ExternalLink className="w-5 h-5" />
-                <span>Volver a la Web</span>
-              </Link>
-            </div>
           </nav>
         </div>
 
-        {/* Footer del Sidebar con perfil de usuario */}
-        <div className="pt-6 border-t border-slate-800 text-xs text-slate-400">
-          <p className="font-semibold text-slate-200">Admin Alquimia</p>
-          <p className="text-[11px] text-slate-500">Santiago de Compostela</p>
+        {/* Footer del Sidebar */}
+        <div className="pt-6 border-t border-slate-800/80 mt-6 space-y-3">
+          <Link
+            href="/"
+            className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-400 hover:text-emerald-400 rounded-lg hover:bg-slate-800/40 transition-colors"
+          >
+            <span>Volver a la web pública</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </Link>
+
+          <div className="flex items-center justify-between px-2 pt-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 font-semibold text-xs border border-slate-700">
+                AD
+              </div>
+              <div>
+                <span className="text-xs font-bold text-white block leading-tight">Admin</span>
+                <span className="text-[10px] text-slate-500 block">Supabase / JWT</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800/60 transition-colors"
+              title="Cerrar sesión"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </aside>
 
-      {/* Áreas de Contenido Principal del Dashboard */}
-      <main className="flex-1 p-8 overflow-y-auto space-y-8">
-        {/* Cabecera del Panel */}
-        <header className="flex items-center justify-between pb-6 border-b border-slate-800">
+      {/* ========================================================================
+          ÁREA PRINCIPAL DE CONTENIDO
+         ======================================================================== */}
+      <main className="flex-1 p-6 md:p-10 overflow-y-auto max-w-7xl mx-auto w-full">
+        {/* Header Superior */}
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-8 mb-8 border-b border-slate-800/80">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-white">
-              {activeTab === 'supabase'
-                ? 'Tablas de Supabase'
-                : activeTab === 'n8n'
-                  ? 'Workflows n8n'
-                  : activeTab === 'hunter'
-                    ? 'Hunter (Radar)'
-                    : 'Dashboard General'}
+            <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
+              {activeTab === 'dashboard' && 'Resumen General'}
+              {activeTab === 'hunter' && 'Lead Hunter 🗺️ (Mapa de Prospectos Galicia)'}
+              {activeTab === 'leads' && 'Pipeline & Gestión de Leads'}
+              {activeTab === 'inbox' && 'Inbox de Clientes (Consultas & Chat Web)'}
+              {activeTab === 'n8n' && 'Flujos n8n (Diagramas & Ejecuciones)'}
+              {activeTab === 'trainer' && 'Chat con Max (Asistente Comercial IA)'}
+              {activeTab === 'supabase' && 'Explorador de Tablas (Supabase Cloud)'}
+              {activeTab === 'settings' && 'Configuración del Sistema'}
             </h1>
-            <p className="text-slate-400 text-sm mt-1">
-              {activeTab === 'supabase'
-                ? 'Explorador y Gestión de carpetas / tablas de la Base de Datos'
-                : activeTab === 'n8n'
-                  ? 'Acceso en tiempo real al cerebro de automatización (cerebro.agencialquimia.com)'
-                  : activeTab === 'hunter'
-                    ? 'Activa el radar y visualiza en el mapa dónde están los negocios a los que apunta'
-                    : 'Control Center y Monitoreo de Leads en Tiempo Real'}
+            <p className="text-sm text-slate-400 mt-1">
+              Monitoreo operativo de automatizaciones, base de datos y prospección en tiempo real.
             </p>
           </div>
-          <div className="px-4 py-2 rounded-full bg-emerald-950 border border-emerald-500/40 text-emerald-400 text-xs font-semibold flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Sistema Operativo Estable</span>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setNotifications(!notifications)}
+              className={`p-2.5 rounded-xl border transition-all ${
+                notifications
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  : 'bg-slate-900 text-slate-500 border-slate-800'
+              }`}
+              title="Notificaciones operativas"
+            >
+              <Bell className="w-4 h-4" />
+            </button>
+            <span className="hidden sm:inline-block px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300">
+              VPS Coolify · Producción
+            </span>
           </div>
         </header>
 
-        {/* Grid de Métricas Principales */}
-        {activeTab === 'dashboard' ? (
-          <DashboardSummary onNavigate={setActiveTab} />
-        ) : activeTab !== 'supabase' && activeTab !== 'n8n' && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-              <div className="flex items-center justify-between text-slate-400">
-                <span className="text-xs uppercase font-bold tracking-wider">Total Leads</span>
-                <UserCheck className="w-5 h-5 text-emerald-400" />
-              </div>
-              <p className="text-4xl font-extrabold text-white">{leads.length}</p>
-            </div>
+        {/* Pestaña: Resumen General */}
+        {activeTab === 'dashboard' && <DashboardSummary onNavigate={setActiveTab} />}
 
-            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-              <div className="flex items-center justify-between text-slate-400">
-                <span className="text-xs uppercase font-bold tracking-wider">Interacciones IA</span>
-                <Bot className="w-5 h-5 text-emerald-400" />
-              </div>
-              <p className="text-4xl font-extrabold text-white">1,284</p>
-            </div>
-
-            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-              <div className="flex items-center justify-between text-slate-400">
-                <span className="text-xs uppercase font-bold tracking-wider">Tasa Conversión</span>
-                <TrendingUp className="w-5 h-5 text-emerald-400" />
-              </div>
-              <p className="text-4xl font-extrabold text-emerald-400">12.4%</p>
-            </div>
-          </div>
+        {/* Pestaña: Hunter Map */}
+        {activeTab === 'hunter' && (
+          <section className="space-y-6">
+            <HunterMap />
+          </section>
         )}
 
-        {/* Renderizado condicional según la pestaña seleccionada */}
-        {activeTab === 'supabase' ? (
-          <DataTable initialTable="leads_agencialquimia" />
-        ) : activeTab === 'n8n' ? (
-          <N8nWorkflows />
-        ) : activeTab === 'inbox' ? (
-          <ClientInbox />
-        ) : activeTab === 'hunter' ? (
-          <HunterMap />
-        ) : activeTab === 'trainer' ? (
-          <MaxChat />
-        ) : activeTab === 'settings' ? (
-          <section className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Settings className="w-5 h-5 text-emerald-400" />
-                <span>Configuración de la Cuenta</span>
-              </h2>
-            </div>
-            
-            <div className="space-y-4 max-w-xl">
-              {/* Opción de Notificaciones (Demo) */}
-              <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800/60">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
-                    <Bell className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-white font-medium">Notificaciones por Email</p>
-                    <p className="text-xs text-slate-400">Recibir alertas de nuevos prospectos</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setNotifications(!notifications)}
-                  className={`w-12 h-6 rounded-full transition-colors relative flex items-center px-1 ${notifications ? 'bg-emerald-500' : 'bg-slate-700'}`}
+        {/* Pestaña: Prospectos / Leads */}
+        {activeTab === 'leads' && (
+          <section className="space-y-6">
+            <div className="flex items-center justify-between gap-4 bg-slate-900/60 p-2 rounded-xl border border-slate-800">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setProspectosView('pipeline')}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors ${
+                    prospectosView === 'pipeline'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
                 >
-                  <div className={`w-4 h-4 rounded-full bg-white transition-transform shadow-sm ${notifications ? 'translate-x-6' : 'translate-x-0'}`} />
+                  Vista Kanban (Pipeline)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProspectosView('tabla')}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-colors ${
+                    prospectosView === 'tabla'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Vista Tabla Supabase
                 </button>
               </div>
+            </div>
 
-              {/* Botón de Cerrar Sesión */}
-              <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800/60">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-red-500/10 rounded-lg text-red-400">
-                    <LogOut className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-white font-medium">Cerrar Sesión</p>
-                    <p className="text-xs text-slate-400">Salir de forma segura del panel</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={handleLogout}
-                  className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium rounded-lg transition-colors border border-red-500/20"
-                >
-                  Cerrar Sesión
-                </button>
-              </div>
-            </div>
-          </section>
-        ) : (
-          /* Prospectos: pipeline guiado + tabla real de leads_agencialquimia */
-          <section className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Database className="w-5 h-5 text-emerald-400" />
-                <span>Prospectos (Leads)</span>
-              </h2>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">Datos en vivo de Supabase</span>
-                <div className="flex rounded-xl bg-slate-800 border border-slate-700 p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setProspectosView('pipeline')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                      prospectosView === 'pipeline'
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    🗂️ Pipeline
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setProspectosView('tabla')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                      prospectosView === 'tabla'
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    📋 Tabla
-                  </button>
-                </div>
-              </div>
-            </div>
             {prospectosView === 'pipeline' ? (
               <LeadPipeline />
             ) : (
-              <DataTable initialTable="leads_agencialquimia" />
+              <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6">
+                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                  <UserCheck className="w-5 h-5 text-emerald-400" />
+                  Registro Reciente de Prospección
+                </h3>
+                <DataTable initialTable="leads_agencialquimia" />
+              </div>
             )}
           </section>
         )}
+
+        {/* Pestaña: Inbox de Clientes */}
+        {activeTab === 'inbox' && (
+          <section className="space-y-6">
+            <ClientInbox />
+          </section>
+        )}
+
+        {/* Pestaña: Flujos n8n */}
+        {activeTab === 'n8n' && (
+          <section className="space-y-6">
+            <N8nWorkflows />
+          </section>
+        )}
+
+        {/* Pestaña: Chat con Max (IA Trainer / OpenClaw) */}
+        {activeTab === 'trainer' && (
+          <section className="space-y-6">
+            <MaxChat />
+          </section>
+        )}
+
+        {/* Pestaña: Tablas Supabase */}
+        {activeTab === 'supabase' && (
+          <section className="space-y-6">
+            <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6">
+              <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                <Database className="w-5 h-5 text-emerald-400" />
+                Explorador Interactivo de Base de Datos
+              </h3>
+              <p className="text-sm text-slate-400 mb-6">
+                Conexión en vivo con el clúster de Supabase Cloud. Selecciona cualquier tabla expuesta para paginar sus filas.
+              </p>
+              <DataTable />
+            </div>
+          </section>
+        )}
+
+        {/* Pestaña: Configuración */}
+        {activeTab === 'settings' && (
+          <section className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6">
+                <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-emerald-400" />
+                  Seguridad & Autenticación
+                </h3>
+                <div className="space-y-3 text-sm text-slate-300">
+                  <div className="flex justify-between py-2 border-b border-slate-800">
+                    <span className="text-slate-400">Método de sesión:</span>
+                    <span className="font-mono text-emerald-400">JWT Web Crypto (HMAC SHA-256)</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-slate-800">
+                    <span className="text-slate-400">Cookie:</span>
+                    <span className="font-mono text-slate-200">HttpOnly · SameSite=lax</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="text-slate-400">Expiración:</span>
+                    <span className="font-mono text-slate-200">12 Horas</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6">
+                <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+                  <FolderGit2 className="w-5 h-5 text-emerald-400" />
+                  Infraestructura & Despliegue
+                </h3>
+                <div className="space-y-3 text-sm text-slate-300">
+                  <div className="flex justify-between py-2 border-b border-slate-800">
+                    <span className="text-slate-400">Servidor VPS:</span>
+                    <span className="font-mono text-emerald-400">Coolify PaaS (Docker)</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-slate-800">
+                    <span className="text-slate-400">Proxy Reverso:</span>
+                    <span className="font-mono text-slate-200">Traefik + Nginx Cache</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="text-slate-400">Integración IA:</span>
+                    <span className="font-mono text-slate-200">n8n (cerebro.agencialquimia.com)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
       </main>
-      </div>
-    </>
+    </div>
   );
 }

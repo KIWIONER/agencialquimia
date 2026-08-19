@@ -31,7 +31,7 @@ export default function AdminLoginPage() {
       } else {
         setError(data.error || 'Credenciales incorrectas');
       }
-    } catch (err) {
+    } catch {
       setError('Error de conexión. Inténtalo de nuevo.');
     } finally {
       setLoading(false);

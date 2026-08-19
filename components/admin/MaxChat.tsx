@@ -189,9 +189,11 @@ export default function MaxChat() {
                   ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
                   : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
               }`}
-              title="Mostrar/ocultar panel de información"
-            >
+              title="Mostrar/ocultar panel de información">
               {infoOpen ? <X size={14} /> : <History size={14} />}
+            </button>
+            <button type="button" onClick={nuevaConversacion} className="p-2 rounded-lg border text-xs font-bold transition-colors bg-slate-800 text-slate-400 border-slate-700 hover:text-white" title="Nueva conversación">
+              <RefreshCw size={14} />
             </button>
           </div>
         </div>
