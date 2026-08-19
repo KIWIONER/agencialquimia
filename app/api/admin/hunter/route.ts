@@ -410,7 +410,7 @@ DATOS DEL NEGOCIO:\n${datos}`;
 
       // 1. Obtener datos del lead de la base de datos
       const leadRes = await pool.query(
-        'SELECT id, cliente_nombre, cliente_correo, cliente_telefono, empresa, sector, problema, url_web, ciudad, comunidad FROM leads_agencialquimia WHERE id = $1',
+        'SELECT id, cliente_nombre, cliente_correo, cliente_telefono, empresa, sector, problema FROM leads_agencialquimia WHERE id = $1',
         [leadId]
       );
       const lead = leadRes.rows[0];
@@ -421,7 +421,7 @@ DATOS DEL NEGOCIO:\n${datos}`;
       // 2. Calcular score y recomendaciones en el microservicio Python
       const scoringPayload = {
         negocio: lead.cliente_nombre || lead.empresa || 'Negocio Local',
-        url: lead.url_web || '',
+        url: '',
         sector: lead.sector || '',
         email: lead.cliente_correo || '',
         telefono: lead.cliente_telefono || '',
@@ -439,9 +439,9 @@ DATOS DEL NEGOCIO:\n${datos}`;
       // 3. Generar auditoría en PDF en el microservicio Python
       const pdfPayload = {
         name: lead.cliente_nombre || lead.empresa || 'Negocio Local',
-        url: lead.url_web || 'Sin web',
+        url: 'Sin web',
         sector: lead.sector || 'General',
-        ubicacion: [lead.ciudad, lead.comunidad].filter(Boolean).join(', ') || 'Galicia, España',
+        ubicacion: 'Galicia, España',
         score: scoreRes.score,
         potencial: scoreRes.potencial_venta,
         fallos: scoreRes.recomendaciones.map((r, i) => ({
