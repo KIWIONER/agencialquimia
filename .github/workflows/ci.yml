@@ -3,18 +3,15 @@
 # ==============================================================================
 # Descripción:
 #  Validación continua (CI) para AgenciAlquimia: en cada push a `main` y en
-#  cada pull request se ejecutan typecheck, lint, tests y build de producción.
-#
-#  Nota: el DESPLIEGUE no se hace desde GitHub Actions. Coolify (PaaS
-#  self-hosted en el VPS) construye y despliega automáticamente la imagen
-#  Docker de la aplicación con cada push a `main`.
+#  cada pull request se ejecutan typecheck, lint, tests de Next.js, tests de
+#  Python Core (pytest) y build de producción.
 # ==============================================================================
 
 name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, python-core]
   pull_request:
 
 jobs:
@@ -31,7 +28,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      - name: Instalar dependencias
+      - name: Instalar dependencias Node.js
         run: npm ci
 
       - name: Typecheck (TypeScript estricto)
@@ -40,8 +37,25 @@ jobs:
       - name: Lint (ESLint)
         run: npm run lint
 
-      - name: Tests (Vitest)
+      - name: Tests Node.js (Vitest)
         run: npm test
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar dependencias Python Core
+        run: |
+          sudo apt-get update && sudo apt-get install -y libpango1.0-dev libpangoft2-1.0-0 libcairo2
+          cd services/python-core
+          pip install --upgrade pip
+          pip install . pytest pytest-asyncio
+
+      - name: Tests Python Core (pytest)
+        run: |
+          cd services/python-core
+          pytest tests/
 
       - name: Build de producción
         run: npm run build
