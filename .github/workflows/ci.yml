@@ -49,13 +49,14 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y libpango1.0-dev libpangoft2-1.0-0 libcairo2
           cd services/python-core
-          pip install --upgrade pip
-          pip install . pytest pytest-asyncio
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -e . pytest pytest-asyncio
 
       - name: Tests Python Core (pytest)
         run: |
           cd services/python-core
-          pytest tests/
+          .venv/bin/pytest tests/
 
       - name: Build de producción
         run: npm run build
