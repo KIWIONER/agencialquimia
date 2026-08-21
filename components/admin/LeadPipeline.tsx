@@ -14,6 +14,9 @@ import {
   ChevronLeft,
   X,
   RefreshCw,
+  FileText,
+  Sparkles,
+  MessageSquare,
 } from 'lucide-react';
 
 interface LeadRow {
@@ -68,6 +71,84 @@ export default function LeadPipeline() {
   const [dragging, setDragging] = useState<LeadRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [scoringData, setScoringData] = useState<{
+    score: number;
+    grade: string;
+    recomendaciones: string[];
+    potencial_venta: string;
+  } | null>(null);
+  const [loadingScoring, setLoadingScoring] = useState(false);
+
+  useEffect(() => {
+    if (!selected) {
+      setScoringData(null);
+      return;
+    }
+
+    const calcScoring = async () => {
+      setLoadingScoring(true);
+      try {
+        const payload = {
+          negocio: selected.cliente_nombre || selected.empresa || 'Negocio Local',
+          url: '',
+          sector: selected.sector || '',
+          email: selected.cliente_correo || '',
+          telefono: selected.cliente_telefono || '',
+          fallos_detectados: selected.problema ? [selected.problema] : [],
+          tech_stack: [],
+        };
+        const res = await fetch('/api/admin/hunter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'calculate-score', payload }),
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.ok && json.scoring) {
+            setScoringData(json.scoring);
+          }
+        }
+      } catch (e) {
+        console.error('Error calculando scoring:', e);
+      } finally {
+        setLoadingScoring(false);
+      }
+    };
+
+    calcScoring();
+  }, [selected]);
+
+  const handleGenerateAudit = async (leadId: number) => {
+    setGeneratingPdf(true);
+    try {
+      const res = await fetch('/api/admin/hunter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'generate-audit', leadId }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.message ?? 'Error al generar la auditoría');
+      }
+
+      // Descargar el archivo PDF
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `auditoria_${(selected?.cliente_nombre || 'lead').replace(/\s+/g, '_')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al generar el reporte PDF');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
 
   const fetchLeads = async () => {
     setLoading(true);
@@ -253,6 +334,110 @@ export default function LeadPipeline() {
             {selected.etapa_actualizada_en && (
               <p className="text-slate-500">Última etapa: {fmtFecha(selected.etapa_actualizada_en)}</p>
             )}
+          </div>
+
+          {/* Sección de Auditoría IA & Scoring */}
+          <div className="mt-4 pt-3 border-t border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <h5 className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5" /> Auditoría & Scoring IA
+              </h5>
+              {loadingScoring && <RefreshCw className="w-3 h-3 text-slate-500 animate-spin" />}
+            </div>
+
+            {scoringData ? (
+              <div className="rounded-xl bg-slate-950/80 border border-emerald-500/20 p-3 space-y-2.5">
+                {/* Header Score & Grado */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-slate-400 block font-medium">Puntaje Digital</span>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-extrabold text-white">{scoringData.score}</span>
+                      <span className="text-xs text-slate-500 font-mono">/ 100</span>
+                    </div>
+                  </div>
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-xs font-extrabold border ${
+                      scoringData.score >= 80
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                        : scoringData.score >= 60
+                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                        : 'bg-red-500/10 border-red-500/30 text-red-400'
+                    }`}
+                  >
+                    Grado {scoringData.grade}
+                  </span>
+                </div>
+
+                {/* Barra de progreso */}
+                <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-500 ${
+                      scoringData.score >= 80 ? 'bg-emerald-500' : scoringData.score >= 60 ? 'bg-amber-500' : 'bg-red-500'
+                    }`}
+                    style={{ width: `${scoringData.score}%` }}
+                  />
+                </div>
+
+                {/* Potencial Comercial */}
+                <div className="text-[11px] text-slate-300 leading-relaxed bg-slate-900/60 rounded-lg p-2 border border-slate-800">
+                  <p className="font-semibold text-emerald-400 mb-0.5">🎯 Potencial Comercial:</p>
+                  {scoringData.potencial_venta}
+                </div>
+
+                {/* Recomendaciones */}
+                {scoringData.recomendaciones.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Acciones Recomendadas:</p>
+                    <ul className="space-y-1">
+                      {scoringData.recomendaciones.slice(0, 3).map((rec, i) => (
+                        <li key={i} className="text-[10px] text-slate-300 flex items-start gap-1">
+                          <span className="text-amber-400 shrink-0">⚡</span>
+                          <span className="leading-tight">{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-xl bg-slate-950/40 border border-slate-800 p-3 text-center text-xs text-slate-500">
+                {loadingScoring ? 'Analizando prospecto con IA...' : 'No hay datos de auditoría'}
+              </div>
+            )}
+
+            {/* Acciones: Descargar PDF y WhatsApp */}
+            <div className="flex gap-1.5 pt-1">
+              <button
+                type="button"
+                disabled={generatingPdf}
+                onClick={() => handleGenerateAudit(selected.id)}
+                className="flex-1 flex items-center justify-center gap-1 px-2.5 py-2 rounded-lg bg-emerald-500 text-slate-950 text-xs font-bold hover:bg-emerald-400 disabled:opacity-50 transition-colors shadow-md shadow-emerald-500/10"
+              >
+                {generatingPdf ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <>
+                    <FileText className="w-3.5 h-3.5" /> Descargar PDF
+                  </>
+                )}
+              </button>
+
+              {selected.cliente_telefono && (
+                <a
+                  href={`https://wa.me/${selected.cliente_telefono.replace(/\D/g, '')}?text=${encodeURIComponent(
+                    `Hola ${selected.cliente_nombre || 'estimado/a'}, adjunto el resumen de tu auditoría digital con AgenciAlquimia. Tu puntuación de eficiencia es de ${
+                      scoringData?.score ?? 75
+                    }/100.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1 px-2.5 py-2 rounded-lg bg-emerald-950 border border-emerald-500/40 text-emerald-300 text-xs font-bold hover:bg-emerald-900 transition-colors"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
+                </a>
+              )}
+            </div>
           </div>
 
           {/* Navegación de etapa */}

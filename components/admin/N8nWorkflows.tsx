@@ -54,10 +54,13 @@ export function N8nWorkflows() {
       const res = await fetch('/api/admin/n8n', { cache: 'no-store' });
       const json = await res.json();
       if (json.success) {
+        const list = json.workflows ?? [];
+        const total = json.total ?? list.length;
+        const activeCount = json.activeCount ?? list.filter((w: N8nWorkflow) => w.active).length;
         setState({
-          workflows: json.workflows ?? [],
-          total: json.total ?? 0,
-          activeCount: json.activeCount ?? 0,
+          workflows: list,
+          total,
+          activeCount,
         });
       } else {
         setState((prev) => ({ ...prev, error: json.error ?? 'Error desconocido' }));
@@ -79,7 +82,13 @@ export function N8nWorkflows() {
       const res = await fetch(`/api/admin/n8n/${encodeURIComponent(id)}`, { cache: 'no-store' });
       const json = await res.json();
       if (json.success) {
-        setDiagram({ id: json.id ?? id, name: json.name ?? name, nodes: json.nodes ?? [], connections: json.connections ?? {} });
+        const wf = json.workflow ?? json;
+        setDiagram({
+          id: wf.id ?? id,
+          name: wf.name ?? name,
+          nodes: wf.nodes ?? [],
+          connections: wf.connections ?? {},
+        });
       } else {
         setState((prev) => ({ ...prev, error: json.error ?? 'No se pudo cargar el workflow' }));
       }

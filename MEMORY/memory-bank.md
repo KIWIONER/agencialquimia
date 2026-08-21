@@ -74,6 +74,9 @@ El proyecto se encuentra 100% migrado, corregido y unificado bajo un único ecos
 ├── public/                     # Recursos estáticos servidos nativamente por Next.js (assets, favicons)
 ├── lib/                        # Utilidades centralizadas (metadata.ts para SEO)
 ├── types/                      # Interfaces TypeScript strictly (chat.ts)
+├── services/                   # Microservicios auxiliares sidecar de AgenciAlquimia
+│   └── python-core/            # Microservicio FastAPI de alto rendimiento (scraping, scoring)
+├── docs/                       # Documentación y planos detallados de integración
 ├── next.config.mjs             # Configuración de compilación SWC y compresión Brotli/Gzip
 ├── .env.local / .env.example   # Variables de entorno parametrizadas (N8N_WEBHOOK_URL)
 ├── .github/                    # Planes de implementación (implementation-plan.md)
@@ -149,3 +152,7 @@ El proyecto se encuentra 100% migrado, corregido y unificado bajo un único ecos
 | **Agosto 2026** | **Auditoría de seguridad + 4 arreglos:** ① rol Postgres de Max → rol limitado `n8n_max` (Supabase Cloud); ② PIN 2 pasos del número WhatsApp activado; ③ clave de cifrado de n8n rotada (15/15 credenciales re-cifradas + 5 API keys JWT re-firmadas + SSH key sourceControl); ④ token System User documentado con rotación manual. Detalle en `notes/permisos-whatsapp.md`. | ✅ API 200 + 7 workflows activos |
 | **Agosto 2026** | **Seguridad de APIs & Resiliencia:** Blindaje de todas las APIs admin (`/api/admin/*`) mediante JWT y cookie HttpOnly. Implementación de Rate Limiting por IP (15 req/min) en `/api/chat/route.ts` contra denegación de servicio. | ✅ Completado (0 lints/0 tsc/build OK) |
 | **Agosto 2026** | **Integración de Python (Fase 1):** Creación del plan completo de integración de Python (FastAPI sidecar) y estructuración de la Fase 1 (creación de directorios, `pyproject.toml`, `Dockerfile`, `main.py`, entorno virtual y dependencias). | ✅ Fase 1 Completada (Health check listo) |
+| **Agosto 2026** | **Integración de Python (Fase 2):** Módulo de seguridad inter-servicio: `dependencies/auth.py` con verificación HMAC SHA-256 en FastAPI + `lib/python-client.ts` cliente firmador en Next.js. Tests: health 200 OK, firma válida 200 OK, firma inválida 403 Forbidden. | ✅ Fase 2 Completada (Push OK python-core) |
+| **Agosto 2026** | **Integración de Python (Fase 3):** Migración del geocodificador prioritario de Galicia (`/hunter/geocode`) y del extractor de contactos web (`/hunter/extract`) al FastAPI sidecar. Refactorización del proxy Next.js con autenticación HMAC SHA-256. | ✅ Fase 3 Completada (Push OK python-core) |
+| **Agosto 2026** | **Integración de Python (Fase 4):** Generador de auditorías PDF con WeasyPrint y motor heurístico de Lead Scoring en FastAPI. Integración del botón de descarga directa en el Kanban de leads (`components/admin/LeadPipeline.tsx`). | ✅ Fase 4 Completada (Push OK python-core) |
+| **Agosto 2026** | **Integración de Python (Fase 5):** Suite de pruebas automatizadas con `pytest` (7/7 tests exitosos) para auth HMAC, scraper Hunter, Lead Scoring y WeasyPrint PDF. Integración en pipeline de CI/CD (`.github/workflows/ci.yml`). | ✅ Fase 5 Completada (Push OK python-core) |
