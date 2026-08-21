@@ -66,7 +66,13 @@ export async function GET(request: NextRequest) {
       active: w.active,
     }));
 
-    return NextResponse.json({ success: true, workflows });
+    const activeCount = workflows.filter((w) => w.active).length;
+    return NextResponse.json({
+      success: true,
+      workflows,
+      total: workflows.length,
+      activeCount,
+    });
   } catch (error) {
     console.error('[n8n workflows proxy error]:', error);
     return NextResponse.json(
