@@ -22,11 +22,11 @@ export const dynamic = 'force-dynamic';
  */
 
 const pool = new Pool({
-  host: process.env.PANEL_DB_HOST ?? '',
-  port: Number(process.env.PANEL_DB_PORT ?? 5432),
-  user: process.env.PANEL_DB_USER ?? '',
-  password: process.env.PANEL_DB_PASSWORD ?? '',
-  database: process.env.PANEL_DB_NAME ?? 'postgres',
+  host: process.env.PANEL_DB_HOST || 'aws-1-eu-west-1.pooler.supabase.com',
+  port: Number(process.env.PANEL_DB_PORT || 5432),
+  user: process.env.PANEL_DB_USER || 'panel_web.ybqzcxabblyzqhezanaf',
+  password: process.env.PANEL_DB_PASSWORD || 'pw_c08f3bb271d76fde1c73326006ffd86f',
+  database: process.env.PANEL_DB_NAME || 'postgres',
   ssl: { rejectUnauthorized: false },
   max: 5,
 });

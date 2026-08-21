@@ -17,10 +17,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'No autorizado' }, { status: 401 });
   }
 
-  const apiUrl = process.env.N8N_API_URL;
-  if (!apiUrl) {
-    return NextResponse.json({ message: 'N8N no configurado' }, { status: 500 });
-  }
+  const apiUrl = process.env.N8N_API_URL || 'https://cerebro.agencialquimia.com/api/v1';
   // N8N_API_URL suele incluir /api/v1 (API pública); los webhooks viven en la raíz
   const webhookBase = apiUrl.replace(/\/api\/v1\/?$/, '');
 
