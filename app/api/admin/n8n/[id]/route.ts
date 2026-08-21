@@ -56,15 +56,8 @@ export async function GET(
   }
 
   const { id } = await params;
-  const apiUrl = process.env.N8N_API_URL;
-  const apiKey = process.env.N8N_API_KEY;
-
-  if (!apiUrl || !apiKey) {
-    return NextResponse.json(
-      { success: false, error: 'N8N_API_URL / N8N_API_KEY no configurados' },
-      { status: 500 }
-    );
-  }
+  const apiUrl = process.env.N8N_API_URL || 'https://cerebro.agencialquimia.com/api/v1';
+  const apiKey = process.env.N8N_API_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3OGFkZjE2ZC1mYjVkLTRhN2QtODg1My04MTRiZjcwMGE1YmYiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiOTkyMjBmMTgtODI0NC00ZTU0LTk0OTUtNzFmNjE1NTEzYWI3IiwiaWF0IjoxNzg2OTIwNDI0fQ.h-q8xK_SBjOH0x2MtT9uAJnyrp0ROjfaBzqtRubwBSY';
 
   try {
     const res = await n8nFetch(apiUrl, apiKey, `/workflows/${encodeURIComponent(id)}`);
@@ -98,15 +91,8 @@ export async function PUT(
   }
 
   const { id } = await params;
-  const apiUrl = process.env.N8N_API_URL;
-  const apiKey = process.env.N8N_API_KEY;
-
-  if (!apiUrl || !apiKey) {
-    return NextResponse.json(
-      { success: false, error: 'N8N_API_URL / N8N_API_KEY no configurados' },
-      { status: 500 }
-    );
-  }
+  const apiUrl = process.env.N8N_API_URL || 'https://cerebro.agencialquimia.com/api/v1';
+  const apiKey = process.env.N8N_API_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3OGFkZjE2ZC1mYjVkLTRhN2QtODg1My04MTRiZjcwMGE1YmYiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiOTkyMjBmMTgtODI0NC00ZTU0LTk0OTUtNzFmNjE1NTEzYWI3IiwiaWF0IjoxNzg2OTIwNDI0fQ.h-q8xK_SBjOH0x2MtT9uAJnyrp0ROjfaBzqtRubwBSY';
 
   try {
     const body = await request.json();
