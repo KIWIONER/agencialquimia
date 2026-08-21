@@ -21,11 +21,11 @@ export const dynamic = 'force-dynamic';
  */
 
 const pool = new Pool({
-  host: process.env.PANEL_DB_HOST ?? '',
-  port: Number(process.env.PANEL_DB_PORT ?? 5432),
-  user: process.env.PANEL_DB_USER ?? '',
-  password: process.env.PANEL_DB_PASSWORD ?? '',
-  database: process.env.PANEL_DB_NAME ?? 'postgres',
+  host: process.env.PANEL_DB_HOST || 'aws-1-eu-west-1.pooler.supabase.com',
+  port: Number(process.env.PANEL_DB_PORT || 5432),
+  user: process.env.PANEL_DB_USER || 'panel_web.ybqzcxabblyzqhezanaf',
+  password: process.env.PANEL_DB_PASSWORD || 'pw_c08f3bb271d76fde1c73326006ffd86f',
+  database: process.env.PANEL_DB_NAME || 'postgres',
   ssl: { rejectUnauthorized: false },
 });
 
@@ -87,8 +87,8 @@ export async function GET(request: Request) {
     // Workflows n8n (mejor esfuerzo: si la API no está, devolvemos null)
     let workflows: { total: number | null; activos: number | null } = { total: null, activos: null };
     try {
-      const apiUrl = process.env.N8N_API_URL ?? '';
-      const apiKey = process.env.N8N_API_KEY ?? '';
+      const apiUrl = process.env.N8N_API_URL || 'https://cerebro.agencialquimia.com/api/v1';
+      const apiKey = process.env.N8N_API_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3OGFkZjE2ZC1mYjVkLTRhN2QtODg1My04MTRiZjcwMGE1YmYiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiOTkyMjBmMTgtODI0NC00ZTU0LTk0OTUtNzFmNjE1NTEzYWI3IiwiaWF0IjoxNzg2OTIwNDI0fQ.h-q8xK_SBjOH0x2MtT9uAJnyrp0ROjfaBzqtRubwBSY';
       if (apiUrl && apiKey) {
         const res = await fetch(`${apiUrl.replace(/\/$/, '')}/workflows?limit=250`, {
           headers: { 'X-N8N-API-KEY': apiKey },
