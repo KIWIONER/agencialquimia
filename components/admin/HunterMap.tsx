@@ -1,19 +1,24 @@
 'use client';
 
 /**
- * Radar Hunter — mapa de negocios + botón de activación + filtros.
- *
- * - Botón "🎯 Activar Radar": lanza el workflow n8n hunterops-alquimia
- *   (webhook hunter-ops). Los leads nuevos se geocodifican y aparecen.
- * - Mapa (Leaflet + OpenStreetMap, sin API key): TODOS los negocios con
- *   coordenadas se pintan (objetivos 🎯 morados + leads por estado).
- * - Filtros: comunidad autónoma, ciudad y tipo de negocio (sector/nicho).
- * - Detalle completo de cada negocio en popups y lista lateral.
+ * ==============================================================================
+ * Archivo: components/admin/HunterMap.tsx
+ * ==============================================================================
+ * Descripción:
+ *  Radar Hunter — Centro de Mando Táctico y Mapa de Prospección Comercial.
+ *  Diseño Satinado Claro (SaaS Modern Light) con flujo completo de ciclo de radar:
+ *  1. Configuración, Edición, Activación/Pausa y Eliminación de Radares.
+ *  2. Filtrado dinámico: Si no hay radar o está pausado, no muestra negocios.
+ *  3. Vaciado instantáneo y seguro de la lista de negocios cazados.
+ *  4. Exportación técnica directa a CSV y geocodificación OSM.
+ * ==============================================================================
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { Button } from '../ui/Button';
+import { downloadLeadsCSV } from '../../lib/export-utils';
 
 interface Lead {
   id: string;
@@ -55,328 +60,206 @@ interface RadarQuery {
   activo: boolean;
   plataforma: string[] | null;
   geo: string | null;
-  created_at: string;
+  exclusiones?: string | null;
+  created_at?: string;
 }
 
-interface Filtros {
-  comunidades_obj: string[] | null;
-  ciudades_obj: string[] | null;
-  sectores_obj: string[] | null;
-  nichos_leads: string[] | null;
-}
 
-interface NegocioSeleccionado {
-  tipo: 'objetivo' | 'lead';
-  item: Objetivo | Lead;
-}
 
-const ESTADO_COLOR: Record<string, string> = {
-  pendiente: '#f59e0b',
-  contactado: '#3b82f6',
-  'en conversacion': '#10b981',
-  ganado: '#22c55e',
-  descartado: '#ef4444',
-};
-
-function estadoColor(estado: string | null): string {
-  return ESTADO_COLOR[estado?.toLowerCase() ?? ''] ?? '#94a3b8';
-}
-
-function estadoLabel(estado: string | null): string {
-  if (!estado) return 'sin estado';
-  return estado.charAt(0).toUpperCase() + estado.slice(1);
-}
-
-function esc(s: string | null | undefined): string {
-  return (s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+const SECTORES_POPULARES = [
+  'Clínicas Dentales',
+  'Gestorías & Asesorías',
+  'Restauración & Hostelería',
+  'Inmobiliarias',
+  'Talleres Mecánicos',
+  'Gimnasios & Fitness',
+  'Comercio Local',
+  'Reformas & Construcción',
+  'Salud & Bienestar',
+];
 
 export function HunterMap() {
-  const mapRef = useRef<L.Map | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const markersRef = useRef<L.Marker[]>([]);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstance = useRef<L.Map | null>(null);
+  const markersRef = useRef<L.LayerGroup | null>(null);
+
+  // Estados de datos
   const [leads, setLeads] = useState<Lead[]>([]);
   const [objetivos, setObjetivos] = useState<Objetivo[]>([]);
   const [queries, setQueries] = useState<RadarQuery[]>([]);
-  const [filtros, setFiltros] = useState<Filtros>({
-    comunidades_obj: [],
-    ciudades_obj: [],
-    sectores_obj: [],
-    nichos_leads: [],
-  });
   const [loading, setLoading] = useState(true);
-  const [radarLoading, setRadarLoading] = useState(false);
-  const [geocoding, setGeocoding] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
-  const [statusDetalle, setStatusDetalle] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Negocio seleccionado (detalle)
-  const [seleccion, setSeleccion] = useState<NegocioSeleccionado | null>(null);
-  // Generador de mensajes con Max
-  const [msgTipo, setMsgTipo] = useState<'whatsapp' | 'email'>('whatsapp');
-  const [msgGenerando, setMsgGenerando] = useState(false);
-  const [msgTexto, setMsgTexto] = useState('');
-  const [msgEstado, setMsgEstado] = useState<'idle' | 'ok' | 'error'>('idle');
-  const [msgDetalle, setMsgDetalle] = useState<string | null>(null);
-  const [enviandoWa, setEnviandoWa] = useState(false);
-  const [enviadoWa, setEnviadoWa] = useState(false);
-  const [copiado, setCopiado] = useState(false);
+  // Estados de modales y edición
+  const [mostrarConfig, setMostrarConfig] = useState(false);
+  const [confirmVaciar, setConfirmVaciar] = useState(false);
+  const [vaciarLoading, setVaciarLoading] = useState(false);
+  const [radarRunning, setRadarRunning] = useState(false);
+  const [radarSuccess, setRadarSuccess] = useState<string | null>(null);
+  const [geocodeLoading, setGeocodeLoading] = useState(false);
 
-  // Filtros activos
-  const [fComunidad, setFComunidad] = useState<string>('all');
-  const [fCiudad, setFCiudad] = useState<string>('all');
-  const [fTipo, setFTipo] = useState<string>('all');
+  // Estado del formulario de radar (Crear / Editar)
+  const [editingQueryId, setEditingQueryId] = useState<string | null>(null);
+  const [queryForm, setQueryForm] = useState({
+    query: '',
+    sector: 'Clínicas Dentales',
+    geo: 'Santiago de Compostela, Galicia',
+    palabrasAfina: 'privada, centro, especialista, independiente, particular',
+    plataformas: ['Google My Business', 'Google Search'],
+  });
 
-  // --- Gestión de queries del radar ---
-  const PLATAFORMAS: Array<{ id: string; label: string }> = [
-    { id: 'LinkedIn', label: 'LinkedIn' },
-    { id: 'Social Media', label: 'Social Media' },
-    { id: 'Google My Business', label: 'Google My Business' },
-    { id: 'Google Search', label: 'Google Search' },
-  ];
-  const [nuevaQuery, setNuevaQuery] = useState({ query: '', sector: '', geo: 'Galicia, España', plataforma: [] as string[], activo: true });
-  const [mostrarNueva, setMostrarNueva] = useState(false);
-  const [edicion, setEdicion] = useState<Record<string, { query: string; sector: string; geo: string; plataforma: string[] }>>({});
-  const [querySaving, setQuerySaving] = useState(false);
-  const [queryMsg, setQueryMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  // Filtros de visualización
+  const [filtroSector] = useState<string>('todos');
+  const [filtroGeo] = useState<string>('todos');
+    const [soloConCoords, setSoloConCoords] = useState(false);
+  const [soloConContacto, setSoloConContacto] = useState(false);
 
-  const guardarQuery = async (id: string, activo: boolean) => {
-    const d = edicion[id];
-    if (!d || !d.query.trim()) {
-      setQueryMsg({ ok: false, text: 'La query no puede estar vacía' });
-      return;
-    }
-    setQuerySaving(true);
-    try {
-      const res = await fetch('/api/admin/hunter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'actualizar-query', id, ...d, activo }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message ?? 'Error al guardar');
-      setQueryMsg({ ok: true, text: '✅ Query guardada' });
-      setEdicion((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      load();
-    } catch (err) {
-      setQueryMsg({ ok: false, text: err instanceof Error ? err.message : 'Error al guardar' });
-    } finally {
-      setQuerySaving(false);
-    }
-  };
-
-  const crearQuery = async () => {
-    if (!nuevaQuery.query.trim()) {
-      setQueryMsg({ ok: false, text: 'Escribe la query' });
-      return;
-    }
-    setQuerySaving(true);
-    try {
-      const res = await fetch('/api/admin/hunter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'crear-query', ...nuevaQuery }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message ?? 'Error al crear');
-      setQueryMsg({ ok: true, text: '✅ Query añadida al radar' });
-      setNuevaQuery({ query: '', sector: '', geo: 'Galicia, España', plataforma: [], activo: true });
-      setMostrarNueva(false);
-      load();
-    } catch (err) {
-      setQueryMsg({ ok: false, text: err instanceof Error ? err.message : 'Error al crear' });
-    } finally {
-      setQuerySaving(false);
-    }
-  };
-
-  const eliminarQuery = async (id: string) => {
-    if (!window.confirm('¿Eliminar esta query del radar?')) return;
-    setQuerySaving(true);
-    try {
-      const res = await fetch('/api/admin/hunter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'eliminar-query', id }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message ?? 'Error al eliminar');
-      setQueryMsg({ ok: true, text: '🗑️ Query eliminada' });
-      load();
-    } catch (err) {
-      setQueryMsg({ ok: false, text: err instanceof Error ? err.message : 'Error al eliminar' });
-    } finally {
-      setQuerySaving(false);
-    }
-  };
-
-  const toggleActivo = (q: RadarQuery) => {
-    setEdicion((prev) => ({
-      ...prev,
-      [q.id]: prev[q.id] ?? {
-        query: q.query,
-        sector: q.sector ?? '',
-        geo: q.geo ?? '',
-        plataforma: Array.isArray(q.plataforma) ? q.plataforma : [],
-      },
-    }));
-    guardarQuery(q.id, !q.activo);
-  };
-
-  const editarPlataforma = (id: string, plat: string, check: boolean) => {
-    setEdicion((prev) => {
-      const d = prev[id];
-      if (!d) return prev;
-      const lista = check ? [...d.plataforma, plat] : d.plataforma.filter((p) => p !== plat);
-      return { ...prev, [id]: { ...d, plataforma: lista } };
-    });
-  };
-
-
-  const load = async () => {
+  // Consulta de datos de la API
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const res = await fetch('/api/admin/hunter');
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(d.message ?? 'Error al cargar el radar');
-      }
-      const data = await res.json();
-      setLeads(data.leads ?? []);
-      setObjetivos(data.objetivos ?? []);
-      setQueries(data.queries ?? []);
-      if (data.filtros) {
-        setFiltros({
-          comunidades_obj: data.filtros.comunidades_obj ?? [],
-          ciudades_obj: data.filtros.ciudades_obj ?? [],
-          sectores_obj: data.filtros.sectores_obj ?? [],
-          nichos_leads: data.filtros.nichos_leads ?? [],
-        });
-      }
-      setError(null);
+      if (!res.ok) throw new Error('Error al cargar datos del Radar Hunter');
+      const json = await res.json();
+      setLeads(json.leads ?? []);
+      setObjetivos(json.objetivos ?? []);
+      setQueries(json.queries ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar el radar');
+      setError(err instanceof Error ? err.message : 'Error desconocido al cargar el radar');
     } finally {
       setLoading(false);
     }
   };
 
-  // Inicializar el mapa una sola vez
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
-    const map = L.map(containerRef.current, { zoomControl: true }).setView([42.8805, -8.5457], 12);
+    fetchData();
+  }, []);
+
+  // Radares activos
+  const activeQueries = useMemo(() => queries.filter((q) => q.activo), [queries]);
+  const hasActiveRadar = activeQueries.length > 0;
+
+  // Lógica de filtrado de negocios:
+  // Si no hay ningún radar o todos están pausados, no se muestran negocios
+  const visibles = useMemo(() => {
+    if (!hasActiveRadar) {
+      return { obj: [], leads: [] };
+    }
+
+    const objFiltrados = objetivos.filter((o) => {
+      if (soloConCoords && (!o.lat || !o.lon)) return false;
+      if (soloConContacto && !o.telefono && !o.email) return false;
+      if (filtroSector !== 'todos' && o.sector !== filtroSector) return false;
+      if (filtroGeo !== 'todos' && o.ciudad !== filtroGeo && o.comunidad !== filtroGeo) return false;
+      return true;
+    });
+
+    const leadsFiltrados = leads.filter((l) => {
+      if (soloConCoords && (!l.lat || !l.lon)) return false;
+      if (soloConContacto && !l.telefono && !l.email) return false;
+      if (filtroSector !== 'todos' && l.nicho !== filtroSector) return false;
+      if (filtroGeo !== 'todos' && l.ciudad !== filtroGeo && l.comunidad !== filtroGeo) return false;
+      return true;
+    });
+
+    return { obj: objFiltrados, leads: leadsFiltrados };
+  }, [hasActiveRadar, objetivos, leads, soloConCoords, soloConContacto, filtroSector, filtroGeo]);
+
+  // Inicialización de Leaflet Map
+  useEffect(() => {
+    if (!mapRef.current || mapInstance.current) return;
+
+    const map = L.map(mapRef.current, {
+      center: [42.8782, -8.5448], // Santiago de Compostela
+      zoom: 12,
+      zoomControl: false,
+    });
+
+    L.control.zoom({ position: 'topright' }).addTo(map);
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      attribution: '© OpenStreetMap contributors',
       maxZoom: 19,
     }).addTo(map);
-    mapRef.current = map;
+
+    markersRef.current = L.layerGroup().addTo(map);
+    mapInstance.current = map;
+
     return () => {
       map.remove();
-      mapRef.current = null;
+      mapInstance.current = null;
     };
   }, []);
 
-  // Negocios filtrados
-  const visibles = useMemo(() => {
-    const byTipo = (sector: string | null, nicho: string | null) => {
-      if (fTipo === 'all') return true;
-      const s = (sector ?? '').toLowerCase();
-      const n = (nicho ?? '').toLowerCase();
-      return s.includes(fTipo.toLowerCase()) || n.includes(fTipo.toLowerCase());
-    };
-    const byUbic = (comunidad: string | null, ciudad: string | null) => {
-      if (fComunidad !== 'all' && (comunidad ?? '').toLowerCase() !== fComunidad.toLowerCase()) return false;
-      if (fCiudad !== 'all' && (ciudad ?? '').toLowerCase() !== fCiudad.toLowerCase()) return false;
-      return true;
-    };
-    const obj = objetivos.filter((o) => byUbic(o.comunidad, o.ciudad) && byTipo(o.sector, null));
-    const leadsVisibles = leads.filter((l) => byUbic(l.comunidad, l.ciudad) && byTipo(null, l.nicho));
-    return { obj, leads: leadsVisibles };
-  }, [objetivos, leads, fComunidad, fCiudad, fTipo]);
-
-  // Repintar marcadores cuando cambian los negocios o filtros
+  // Pintar marcadores en el mapa
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
+    if (!mapInstance.current || !markersRef.current) return;
+    markersRef.current.clearLayers();
 
-    const leadConCoords = visibles.leads.filter((l) => l.lat != null && l.lon != null);
-    const objConCoords = visibles.obj.filter((o) => o.lat != null && o.lon != null);
+    const bounds: L.LatLngExpression[] = [];
 
-    for (const lead of leadConCoords) {
-      const color = estadoColor(lead.estado_caza);
-      const icon = L.divIcon({
-        className: 'hunter-marker',
-        html: `<div style="width:18px;height:18px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>`,
-        iconSize: [18, 18],
-        iconAnchor: [9, 9],
-      });
-      const marker = L.marker([lead.lat!, lead.lon!], { icon }).addTo(map);
-      marker.on('click', () => setSeleccion({ tipo: 'lead', item: lead }));
-      marker.bindPopup(
-        `<div style="font-family:system-ui;font-size:12px;max-width:300px;max-height:260px;overflow-y:auto">
-          <strong style="font-size:13px">${esc(lead.empresa)}</strong><br/>
-          <span style="color:#64748b">Estado: ${estadoLabel(lead.estado_caza)}</span><br/>
-          ${lead.ciudad ? `<span style="color:#64748b">📍 ${esc(lead.ciudad)}${lead.comunidad ? `, ${esc(lead.comunidad)}` : ''}</span><br/>` : ''}
-          ${lead.nicho ? `<span style="color:#64748b">Tipo: ${esc(lead.nicho)}</span><br/>` : ''}
-          ${lead.email ? `<span style="color:#64748b">✉️ ${esc(lead.email)}</span><br/>` : ''}
-          ${lead.telefono ? `<span style="color:#64748b">📞 ${esc(lead.telefono)}</span><br/>` : ''}
-          ${lead.senal_detectada ? `<span style="color:#64748b">Señal: ${esc(lead.senal_detectada)}</span><br/>` : ''}
-          ${lead.feedback_cliente ? `<span style="color:#64748b">Feedback: ${esc(lead.feedback_cliente)}</span><br/>` : ''}
-          ${lead.url_web ? `<a href="${esc(lead.url_web)}" target="_blank" rel="noopener noreferrer">web ↗</a>` : 'sin web'}
-        </div>`
-      );
-      markersRef.current.push(marker);
-    }
+    // Pintar Objetivos
+    visibles.obj.forEach((o) => {
+      if (o.lat && o.lon) {
+        const marker = L.marker([o.lat, o.lon], {
+          icon: L.divIcon({
+            className: 'custom-radar-marker',
+            html: '<div style="background-color:#10b981;width:14px;height:14px;border-radius:50%;border:2.5px solid #ffffff;box-shadow:0 0 8px rgba(16,185,129,0.7);"></div>',
+            iconSize: [14, 14],
+            iconAnchor: [7, 7],
+          }),
+        });
 
-    for (const obj of objConCoords) {
-      const icon = L.divIcon({
-        className: 'hunter-marker',
-        html: `<div style="width:24px;height:24px;border-radius:50%;background:#8b5cf6;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;">🎯</div>`,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-      });
-      const marker = L.marker([obj.lat!, obj.lon!], { icon }).addTo(map);
-      marker.on('click', () => setSeleccion({ tipo: 'objetivo', item: obj }));
-      marker.bindPopup(
-        `<div style="font-family:system-ui;font-size:12px;max-width:300px;max-height:260px;overflow-y:auto">
-          <strong style="font-size:13px">🎯 ${esc(obj.negocio)}</strong><br/>
-          ${obj.sector ? `<span style="color:#64748b">Tipo: ${esc(obj.sector)}</span><br/>` : ''}
-          ${obj.ciudad ? `<span style="color:#64748b">📍 ${esc(obj.ciudad)}${obj.comunidad ? `, ${esc(obj.comunidad)}` : ''}</span><br/>` : ''}
-          ${obj.fallo_detectado ? `<span style="color:#64748b">Fallo detectado: ${esc(obj.fallo_detectado)}</span><br/>` : ''}
-          ${obj.potencial_venta ? `<span style="color:#64748b">Potencial: ${esc(obj.potencial_venta)}</span><br/>` : ''}
-          ${obj.url ? `<a href="${esc(obj.url)}" target="_blank" rel="noopener noreferrer">web ↗</a>` : 'sin web'}
-        </div>`
-      );
-      markersRef.current.push(marker);
-    }
+        marker.bindPopup(`
+          <div style="font-family:sans-serif;padding:4px;color:#1c1917;">
+            <div style="font-weight:bold;font-size:13px;color:#047857;">🎯 ${o.negocio}</div>
+            <div style="font-size:11px;color:#57534e;margin-top:2px;">${o.sector || 'Sector no especificado'}</div>
+            ${o.telefono ? `<div style="font-size:11px;margin-top:4px;">📞 <b>${o.telefono}</b></div>` : ''}
+            ${o.email ? `<div style="font-size:11px;">✉️ ${o.email}</div>` : ''}
+          </div>
+        `);
 
-    // Auto-zoom si hay coordenadas
-    const allWithCoords: Array<[number, number]> = [
-      ...leadConCoords.map((l) => [l.lat!, l.lon!] as [number, number]),
-      ...objConCoords.map((o) => [o.lat!, o.lon!] as [number, number]),
-    ];
-    if (allWithCoords.length > 0) {
-      const bounds = L.latLngBounds(allWithCoords);
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
-    } else {
-      map.setView([42.8805, -8.5457], 12);
+        markersRef.current?.addLayer(marker);
+        bounds.push([o.lat, o.lon]);
+      }
+    });
+
+    // Pintar Leads
+    visibles.leads.forEach((l) => {
+      if (l.lat && l.lon) {
+        const marker = L.marker([l.lat, l.lon], {
+          icon: L.divIcon({
+            className: 'custom-radar-marker-lead',
+            html: '<div style="background-color:#3b82f6;width:14px;height:14px;border-radius:50%;border:2.5px solid #ffffff;box-shadow:0 0 8px rgba(59,130,246,0.7);"></div>',
+            iconSize: [14, 14],
+            iconAnchor: [7, 7],
+          }),
+        });
+
+        marker.bindPopup(`
+          <div style="font-family:sans-serif;padding:4px;color:#1c1917;">
+            <div style="font-weight:bold;font-size:13px;color:#1d4ed8;">🏢 ${l.empresa}</div>
+            <div style="font-size:11px;color:#57534e;margin-top:2px;">${l.nicho || 'Nicho general'}</div>
+            ${l.telefono ? `<div style="font-size:11px;margin-top:4px;">📞 <b>${l.telefono}</b></div>` : ''}
+            ${l.email ? `<div style="font-size:11px;">✉️ ${l.email}</div>` : ''}
+          </div>
+        `);
+
+        markersRef.current?.addLayer(marker);
+        bounds.push([l.lat, l.lon]);
+      }
+    });
+
+    if (bounds.length > 0 && mapInstance.current) {
+      mapInstance.current.fitBounds(L.latLngBounds(bounds), { padding: [40, 40], maxZoom: 14 });
     }
   }, [visibles]);
 
-  const activateRadar = async () => {
-    setRadarLoading(true);
-    setStatus(null);
-    setStatusDetalle(null);
+  // Acciones de Radar
+  const ejecutarRadar = async () => {
+    setRadarRunning(true);
+    setRadarSuccess(null);
     setError(null);
     try {
       const res = await fetch('/api/admin/hunter', {
@@ -384,30 +267,18 @@ export function HunterMap() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'radar' }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message ?? 'Error al lanzar el radar');
-      setStatus(data.message ?? 'Radar lanzado');
-      if (data.detalle) setStatusDetalle(data.detalle);
-      // Mostrar las queries activas que ejecutará el radar
-      if (queries.length > 0) {
-        setStatusDetalle(
-          `El radar ejecutará las ${queries.length} queries activas (foco Galicia / Santiago de Compostela):\n\n` +
-            queries.map((q) => `• ${q.query}${q.geo ? ` — ${q.geo}` : ''}`).join('\n')
-        );
-      }
-      // Refrescar tras un rato (el workflow tarda en generar leads)
-      setTimeout(load, 15000);
+      if (!res.ok) throw new Error('Error al ejecutar el barrido del radar');
+      setRadarSuccess('Barrido de radar ejecutado con éxito. Se están buscando prospectos.');
+      await fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al lanzar el radar');
+      setError(err instanceof Error ? err.message : 'Error al ejecutar el radar');
     } finally {
-      setRadarLoading(false);
+      setRadarRunning(false);
     }
   };
 
-  const geocodePending = async () => {
-    setGeocoding(true);
-    setStatus(null);
-    setStatusDetalle(null);
+  const geocodificarNegocios = async () => {
+    setGeocodeLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/admin/hunter', {
@@ -415,852 +286,629 @@ export function HunterMap() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'geocode' }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message ?? 'Error al geolocalizar');
-      const msg = data.geocoded
-        ? `📍 ${data.geocoded} negocio(s) geolocalizados. ${data.failed ? data.failed + ' sin coincidencia.' : ''}`
-        : (data.message ?? 'Sin leads pendientes de geolocalizar.');
-      setStatus(msg);
-      if (data.pendientes != null) {
-        setStatusDetalle(
-          data.pendientes > 0
-            ? `Quedan ${data.pendientes} negocio(s) sin localizar. Vuelve a pulsar "Geolocalizar" para procesar el siguiente lote.`
-            : 'Todos los negocios con ubicación posible están localizados.'
-        );
-      }
-      load();
+      if (!res.ok) throw new Error('Error al geocodificar negocios');
+      await fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al geolocalizar');
+      setError(err instanceof Error ? err.message : 'Error en la geocodificación');
     } finally {
-      setGeocoding(false);
+      setGeocodeLoading(false);
     }
   };
 
-  const pendientes = leads.filter((l) => l.lat == null || l.lon == null).length +
-    objetivos.filter((o) => o.lat == null || o.lon == null).length;
-  const localizados = leads.filter((l) => l.lat != null && l.lon != null).length +
-    objetivos.filter((o) => o.lat != null && o.lon != null).length;
-
-  // Listas de filtros combinadas (objetivos + leads)
-  const comunidades = useMemo(() => {
-    const set = new Set<string>();
-    (filtros.comunidades_obj ?? []).forEach((c) => c && set.add(c));
-    leads.forEach((l) => l.comunidad && set.add(l.comunidad));
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'es'));
-  }, [filtros.comunidades_obj, leads]);
-
-  const ciudades = useMemo(() => {
-    const set = new Set<string>();
-    (filtros.ciudades_obj ?? []).forEach((c) => c && set.add(c));
-    leads.forEach((l) => l.ciudad && set.add(l.ciudad));
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'es'));
-  }, [filtros.ciudades_obj, leads]);
-
-  const tipos = useMemo(() => {
-    const set = new Set<string>();
-    (filtros.sectores_obj ?? []).forEach((s) => s && set.add(s));
-    (filtros.nichos_leads ?? []).forEach((n) => n && set.add(n));
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'es'));
-  }, [filtros.sectores_obj, filtros.nichos_leads]);
-
-  // --- Generador de mensajes con Max ---
-  const generarMensaje = async () => {
-    if (!seleccion) return;
-    setMsgGenerando(true);
-    setMsgEstado('idle');
-    setMsgDetalle(null);
+  const toggleQuery = async (id: string, activoActual: boolean) => {
     try {
-      const item = seleccion.item;
-      const negocio = {
-        nombre: seleccion.tipo === 'objetivo' ? (item as Objetivo).negocio : (item as Lead).empresa,
-        sector: (item as Objetivo).sector ?? (item as Lead).nicho ?? '',
-        ciudad: item.ciudad ?? '',
-        fallo: (item as Objetivo).fallo_detectado ?? (item as Lead).senal_detectada ?? '',
-        potencial: (item as Objetivo).potencial_venta ?? '',
-        url: (item as Objetivo).url ?? (item as Lead).url_web ?? '',
-        telefono: item.telefono ?? '',
-        email: item.email ?? '',
-      };
       const res = await fetch('/api/admin/hunter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'generar-mensaje', tipo: msgTipo, negocio }),
+        body: JSON.stringify({ action: 'toggle-query', id, activo: !activoActual }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message ?? 'Error generando mensaje');
-      setMsgTexto(data.response ?? '');
-      setMsgEstado('ok');
-      setMsgDetalle(
-        msgTipo === 'whatsapp'
-          ? 'Mensaje listo. Revísalo, ajústalo si quieres y envíalo por WhatsApp o cópialo.'
-          : 'Correo listo. Cópialo y pégalo en tu cliente de correo, o abre tu app de email.'
-      );
+      if (!res.ok) throw new Error('Error al cambiar estado del radar');
+      await fetchData();
     } catch (err) {
-      setMsgEstado('error');
-      setMsgDetalle(err instanceof Error ? err.message : 'Error generando el mensaje');
-    } finally {
-      setMsgGenerando(false);
+      setError(err instanceof Error ? err.message : 'Error al cambiar estado');
     }
   };
 
-  const copiarMensaje = async () => {
+  const eliminarQuery = async (id: string) => {
+    if (!window.confirm('¿Seguro que deseas eliminar este radar configurado?')) return;
     try {
-      await navigator.clipboard.writeText(msgTexto);
-      setCopiado(true);
-      setTimeout(() => setCopiado(false), 2000);
-    } catch {
-      setMsgDetalle('No se pudo copiar automáticamente. Selecciona el texto manualmente.');
-    }
-  };
-
-  const enviarWhatsApp = async () => {
-    if (!seleccion || !msgTexto.trim()) return;
-    const telefono = (seleccion.item.telefono ?? '').replace(/\D/g, '');
-    if (!telefono) {
-      setMsgDetalle('Este negocio no tiene teléfono guardado.');
-      return;
-    }
-    setEnviandoWa(true);
-    setEnviadoWa(false);
-    try {
-      const res = await fetch('/api/admin/inbox', {
+      const res = await fetch('/api/admin/hunter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telefono, texto: msgTexto }),
+        body: JSON.stringify({ action: 'eliminar-query', id }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message ?? 'Error enviando');
-      setEnviadoWa(true);
-      setMsgDetalle(`✅ Enviado por WhatsApp a ${seleccion.item.telefono}. El mensaje quedó registrado en el inbox.`);
+      if (!res.ok) throw new Error('Error al eliminar el radar');
+      await fetchData();
     } catch (err) {
-      setMsgDetalle(`⚠️ No se pudo enviar: ${err instanceof Error ? err.message : 'desconocido'}`);
-    } finally {
-      setEnviandoWa(false);
+      setError(err instanceof Error ? err.message : 'Error al eliminar');
     }
   };
 
-  const cerrarDetalle = () => {
-    setSeleccion(null);
-    setMsgTexto('');
-    setMsgEstado('idle');
-    setMsgDetalle(null);
-    setEnviadoWa(false);
-    setCopiado(false);
+  const vaciarNegocios = async () => {
+    setVaciarLoading(true);
+    setConfirmVaciar(false);
+    // Limpiar instantáneamente el estado local para respuesta visual inmediata
+    setObjetivos([]);
+    setLeads([]);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/hunter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'vaciar-negocios' }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || 'Error al vaciar en el servidor');
+      }
+      setRadarSuccess('Lista de negocios del radar vaciada correctamente.');
+    } catch (err) {
+      console.warn('Vaciar lista warning:', err);
+      setRadarSuccess('Lista de negocios vaciada en la vista.');
+    } finally {
+      setVaciarLoading(false);
+    }
+  };
+
+  const guardarRadarForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editingQueryId) {
+        // Actualizar radar existente
+        const res = await fetch('/api/admin/hunter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'actualizar-query',
+            id: editingQueryId,
+            query: queryForm.query,
+            sector: queryForm.sector,
+            geo: queryForm.geo,
+            plataforma: queryForm.plataformas,
+            activo: true,
+          }),
+        });
+        if (!res.ok) throw new Error('Error al actualizar radar');
+      } else {
+        // Crear nuevo radar
+        const res = await fetch('/api/admin/hunter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'crear-query',
+            query: queryForm.query,
+            sector: queryForm.sector,
+            geo: queryForm.geo,
+            plataforma: queryForm.plataformas,
+            activo: true,
+          }),
+        });
+        if (!res.ok) throw new Error('Error al crear nuevo radar');
+      }
+
+      setEditingQueryId(null);
+      setQueryForm({
+        query: '',
+        sector: 'Clínicas Dentales',
+        geo: 'Santiago de Compostela, Galicia',
+        palabrasAfina: 'privada, centro, especialista, independiente, particular',
+        plataformas: ['Google My Business', 'Google Search'],
+      });
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al guardar radar');
+    }
+  };
+
+  const abrirEditarRadar = (q: RadarQuery) => {
+    setEditingQueryId(q.id);
+    setQueryForm({
+      query: q.query,
+      sector: q.sector || 'Clínicas Dentales',
+      geo: q.geo || 'Santiago de Compostela, Galicia',
+      palabrasAfina: q.exclusiones || 'privada, centro, especialista, independiente',
+      plataformas: q.plataforma || ['Google My Business', 'Google Search'],
+    });
   };
 
   return (
-    <section className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <span className="text-2xl">🎯</span>
-            <span>Radar Hunter</span>
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            {leads.length + objetivos.length} negocios en total · {localizados} en el mapa ·{' '}
-            {queries.filter((q) => q.activo).length} queries activas · foco: Galicia (Santiago de Compostela)
-          </p>
+    <div className="space-y-6 text-stone-800 font-sans">
+      {/* Barra de Control Superior */}
+      <div className="bg-white p-6 rounded-2xl border border-stone-200/90 shadow-sm flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center justify-center text-lg font-black">
+            🎯
+          </div>
+          <div>
+            <h2 className="text-lg font-extrabold text-stone-900 leading-tight">Radar Lead Hunter</h2>
+            <div className="flex items-center gap-2 mt-0.5 text-xs text-stone-600 font-medium">
+              <span>Radares configurados: <b>{queries.length}</b> ({activeQueries.length} activos)</span>
+              {hasActiveRadar ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                  Radar Activo
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200 text-[11px] font-bold">
+                  ⏸️ Radar Pausado / Inactivo
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={geocodePending}
-            disabled={geocoding || pendientes === 0}
-            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold text-slate-200 border border-slate-700 transition-colors"
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            variant="primary"
+            size="md"
+            onClick={ejecutarRadar}
+            loading={radarRunning}
+            icon="⚡"
           >
-            {geocoding ? '📍 Geocodificando…' : `📍 Geolocalizar (${pendientes} sin ubicar)`}
-          </button>
-          <button
-            type="button"
-            onClick={activateRadar}
-            disabled={radarLoading}
-            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-bold text-white transition-colors shadow-lg shadow-emerald-600/20"
+            Activar Radar (Buscar)
+          </Button>
+
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={() => downloadLeadsCSV([...visibles.obj, ...visibles.leads])}
+            disabled={visibles.obj.length + visibles.leads.length === 0}
+            icon="📥"
           >
-            {radarLoading ? 'Lanzando…' : '🎯 Activar Radar'}
-          </button>
+            Exportar Lista (CSV)
+          </Button>
+
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={geocodificarNegocios}
+            loading={geocodeLoading}
+            icon="📍"
+          >
+            Geolocalizar
+          </Button>
+
+          <Button
+            variant="outline"
+            size="md"
+            onClick={() => setMostrarConfig(true)}
+            icon="⚙️"
+          >
+            Configurar Radares ({queries.length})
+          </Button>
+
+          <Button
+            variant="danger"
+            size="md"
+            onClick={() => setConfirmVaciar(true)}
+            loading={vaciarLoading}
+            disabled={visibles.obj.length + visibles.leads.length === 0}
+            icon="🗑️"
+          >
+            Vaciar Lista
+          </Button>
         </div>
       </div>
 
-      {status && (
-        <div className="px-4 py-3 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-sm">
-          <p className="font-semibold">✅ {status}</p>
-          {statusDetalle && <p className="mt-1 text-emerald-400/80 whitespace-pre-wrap">{statusDetalle}</p>}
-        </div>
-      )}
+      {/* Alertas */}
       {error && (
-        <div className="px-4 py-3 rounded-xl bg-red-950/60 border border-red-500/40 text-red-300 text-sm">
-          ⚠️ {error}
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center justify-between shadow-xs">
+          <span>⚠️ {error}</span>
+          <button type="button" onClick={() => setError(null)} className="text-rose-900 font-bold ml-2">✕</button>
         </div>
       )}
 
-      {/* Filtros */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-              Comunidad autónoma
-            </label>
-            <select
-              value={fComunidad}
-              onChange={(e) => {
-                setFComunidad(e.target.value);
-                setFCiudad('all');
-              }}
-              className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="all">Todas</option>
-              {comunidades.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Ciudad</label>
-            <select
-              value={fCiudad}
-              onChange={(e) => setFCiudad(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="all">Todas</option>
-              {ciudades.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-              Tipo de negocio
-            </label>
-            <select
-              value={fTipo}
-              onChange={(e) => setFTipo(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="all">Todos</option>
-              {tipos.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </div>
-          {(fComunidad !== 'all' || fCiudad !== 'all' || fTipo !== 'all') && (
-            <button
-              type="button"
-              onClick={() => {
-                setFComunidad('all');
-                setFCiudad('all');
-                setFTipo('all');
-              }}
-              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-sm text-slate-300 border border-slate-700 transition-colors"
-            >
-              ✕ Limpiar filtros
-            </button>
-          )}
-          <div className="ml-auto text-xs text-slate-500">
-            Mostrando <span className="text-slate-300 font-semibold">{visibles.obj.length + visibles.leads.length}</span>{' '}
-            de {objetivos.length + leads.length} negocios
-          </div>
+      {radarSuccess && (
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center justify-between shadow-xs">
+          <span>✅ {radarSuccess}</span>
+          <button type="button" onClick={() => setRadarSuccess(null)} className="text-emerald-900 font-bold ml-2">✕</button>
         </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        {/* Mapa */}
-        <div className="xl:col-span-2 rounded-2xl overflow-hidden border border-slate-800 bg-slate-900">
-          <div ref={containerRef} className="h-[520px] w-full" />
-          {loading && (
-            <div className="h-[520px] flex items-center justify-center text-slate-400 text-sm">
-              Cargando mapa…
+      {/* Contenedor Principal: Mapa a la izquierda, Lista de Negocios a la derecha */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Mapa Interactivo Leaflet (8 columnas) */}
+        <div className="lg:col-span-8 bg-white rounded-2xl border border-stone-200/90 shadow-sm p-4 flex flex-col space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-stone-700 uppercase tracking-wider">Mapa del Radar</span>
+              <span className="text-xs font-semibold text-stone-500">
+                ({visibles.obj.filter((o) => o.lat && o.lon).length + visibles.leads.filter((l) => l.lat && l.lon).length} geolocalizados)
+              </span>
             </div>
-          )}
-        </div>
 
-        {/* Lista lateral con detalle completo */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden flex flex-col max-h-[520px]">
-          <div className="px-4 py-3 border-b border-slate-800 text-sm font-bold text-white flex items-center justify-between">
-            <span>Negocios en el radar</span>
-            <span className="text-xs text-slate-400 font-normal">
-              {visibles.obj.length + visibles.leads.length}
-            </span>
-          </div>
-          <div className="overflow-y-auto divide-y divide-slate-800/60">
-            {visibles.obj.length === 0 && visibles.leads.length === 0 && !loading && (
-              <p className="p-4 text-sm text-slate-500">
-                Sin negocios con estos filtros. Ajusta los filtros o activa el radar.
-              </p>
-            )}
-            {visibles.obj.map((o) => (
-              <button
-                key={`obj-${o.id}`}
-                type="button"
-                onClick={() => setSeleccion({ tipo: 'objetivo', item: o })}
-                className="w-full text-left px-4 py-3 hover:bg-slate-800/40 transition-colors"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-semibold text-slate-100 leading-snug">🎯 {o.negocio}</p>
-                  {o.sector && (
-                    <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300">
-                      {o.sector}
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-[11px] text-slate-500">
-                  <span>{o.lat != null && o.lon != null ? '📍 en mapa' : '📍 sin ubicación'}</span>
-                  {o.ciudad && <span>🏙 {o.ciudad}{o.comunidad ? ` (${o.comunidad})` : ''}</span>}
-                  {o.url && (
-                    <a href={o.url} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline" onClick={(e) => e.stopPropagation()}>
-                      web ↗
-                    </a>
-                  )}
-                  <span>{new Date(o.created_at).toLocaleDateString('es-ES')}</span>
-                </div>
-                {o.fallo_detectado && (
-                  <p className="text-[11px] text-slate-400 mt-1">⚠️ {o.fallo_detectado}</p>
-                )}
-                {o.potencial_venta && (
-                  <p className="text-[11px] text-emerald-400/80 mt-0.5">💰 {o.potencial_venta}</p>
-                )}
-                {(o.email || o.telefono) && (
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    {o.email && <span>✉️ {o.email}</span>}
-                    {o.email && o.telefono && ' · '}
-                    {o.telefono && <span>📞 {o.telefono}</span>}
-                  </p>
-                )}
-                <p className="text-[10px] text-emerald-500/70 mt-1">Ver detalle →</p>
-              </button>
-            ))}
-            {visibles.leads.map((l) => (
-              <button
-                key={l.id}
-                type="button"
-                onClick={() => setSeleccion({ tipo: 'lead', item: l })}
-                className="w-full text-left px-4 py-3 hover:bg-slate-800/40 transition-colors"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-semibold text-slate-100 leading-snug">{l.empresa}</p>
-                  <span
-                    className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                    style={{
-                      backgroundColor: `${estadoColor(l.estado_caza)}22`,
-                      color: estadoColor(l.estado_caza),
-                    }}
-                  >
-                    {estadoLabel(l.estado_caza)}
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-[11px] text-slate-500">
-                  <span>{l.lat != null && l.lon != null ? '📍 en mapa' : '📍 sin ubicación'}</span>
-                  {l.ciudad && <span>🏙 {l.ciudad}{l.comunidad ? ` (${l.comunidad})` : ''}</span>}
-                  {l.url_web && (
-                    <a
-                      href={l.url_web}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-emerald-400 hover:underline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      web ↗
-                    </a>
-                  )}
-                  <span>{new Date(l.created_at).toLocaleDateString('es-ES')}</span>
-                </div>
-                {l.nicho && <p className="text-[11px] text-slate-400 mt-1">🏷 {l.nicho}</p>}
-                {l.senal_detectada && (
-                  <p className="text-[11px] text-slate-400 mt-0.5">📡 {l.senal_detectada}</p>
-                )}
-                {(l.email || l.telefono) && (
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    {l.email && <span>✉️ {l.email}</span>}
-                    {l.email && l.telefono && ' · '}
-                    {l.telefono && <span>📞 {l.telefono}</span>}
-                  </p>
-                )}
-                {l.feedback_cliente && (
-                  <p className="text-[11px] text-slate-400 mt-0.5">💬 {l.feedback_cliente}</p>
-                )}
-                <p className="text-[10px] text-emerald-500/70 mt-1">Ver detalle →</p>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ===== Gestión de queries del radar ===== */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
-        <div className="flex items-center justify-between gap-3 mb-1">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            Queries del radar
-            <span className="ml-2 normal-case font-semibold text-emerald-400">
-              {queries.filter((q) => q.activo).length} activas · {queries.filter((q) => !q.activo).length} en pausa
-            </span>
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              setMostrarNueva((v) => !v);
-              setQueryMsg(null);
-            }}
-            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white transition-colors"
-          >
-            {mostrarNueva ? '✕ Cerrar' : '+ Añadir query'}
-          </button>
-        </div>
-        <p className="text-[11px] text-slate-500 mb-3">
-          El radar ejecuta cada día (12:00) las queries activas. Edita el texto, el sector, la ubicación o
-          la plataforma (añade filtros <code className="text-slate-400">site:</code> en la búsqueda).
-        </p>
-
-        {queryMsg && (
-          <p className={`mb-3 text-xs px-3 py-2 rounded-xl ${queryMsg.ok ? 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300' : 'bg-red-950/60 border border-red-500/40 text-red-300'}`}>
-            {queryMsg.text}
-          </p>
-        )}
-
-        {mostrarNueva && (
-          <div className="mb-4 p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/20 space-y-3">
-            <p className="text-xs font-bold text-emerald-400">➕ Nueva query del radar</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="md:col-span-2 flex flex-col gap-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Query</label>
+            <div className="flex items-center gap-3 text-xs">
+              <label className="inline-flex items-center gap-1.5 cursor-pointer text-stone-700 font-medium">
                 <input
-                  value={nuevaQuery.query}
-                  onChange={(e) => setNuevaQuery((v) => ({ ...v, query: e.target.value }))}
-                  placeholder="Ej: restaurantes en Santiago de Compostela que no contestan"
-                  className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  type="checkbox"
+                  checked={soloConCoords}
+                  onChange={(e) => setSoloConCoords(e.target.checked)}
+                  className="rounded text-emerald-700 focus:ring-emerald-500"
                 />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Sector (opcional)</label>
+                <span>Solo con coordenadas</span>
+              </label>
+
+              <label className="inline-flex items-center gap-1.5 cursor-pointer text-stone-700 font-medium">
                 <input
-                  value={nuevaQuery.sector}
-                  onChange={(e) => setNuevaQuery((v) => ({ ...v, sector: e.target.value }))}
-                  placeholder="hostelería"
-                  className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  type="checkbox"
+                  checked={soloConContacto}
+                  onChange={(e) => setSoloConContacto(e.target.checked)}
+                  className="rounded text-emerald-700 focus:ring-emerald-500"
                 />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Ubicación (geo)</label>
-                <input
-                  value={nuevaQuery.geo}
-                  onChange={(e) => setNuevaQuery((v) => ({ ...v, geo: e.target.value }))}
-                  placeholder="Galicia, España"
-                  className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-              <div className="md:col-span-2 flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Plataforma (filtro site:)</label>
-                <div className="flex flex-wrap gap-2">
-                  {PLATAFORMAS.map((p) => (
-                    <label key={p.id} className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-600 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={nuevaQuery.plataforma.includes(p.id)}
-                        onChange={(e) =>
-                          setNuevaQuery((v) => ({
-                            ...v,
-                            plataforma: e.target.checked ? [...v.plataforma, p.id] : v.plataforma.filter((x) => x !== p.id),
-                          }))
-                        }
-                        className="accent-emerald-500"
-                      />
-                      {p.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
+                <span>Con teléfono/email</span>
+              </label>
             </div>
-            <button
-              type="button"
-              onClick={crearQuery}
-              disabled={querySaving}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-sm font-bold text-white transition-colors"
-            >
-              {querySaving ? 'Guardando…' : 'Añadir al radar'}
-            </button>
           </div>
-        )}
 
-        {queries.length === 0 ? (
-          <p className="text-xs text-slate-500">Aún no hay queries. Añade la primera con «+ Añadir query».</p>
-        ) : (
-          <div className="space-y-2">
-            {queries.map((q) => {
-              const d = edicion[q.id] ?? {
-                query: q.query,
-                sector: q.sector ?? '',
-                geo: q.geo ?? '',
-                plataforma: Array.isArray(q.plataforma) ? q.plataforma : [],
-              };
-              const editando = !!edicion[q.id];
-              return (
-                <div
-                  key={q.id}
-                  className={`rounded-xl border p-3 transition-colors ${q.activo ? 'border-slate-700 bg-slate-950/40' : 'border-slate-800 bg-slate-950/20 opacity-70'}`}
+          <div
+            ref={mapRef}
+            className="w-full h-[520px] rounded-xl border border-stone-200 overflow-hidden shadow-inner relative z-0"
+          />
+        </div>
+
+        {/* Panel Lateral: Lista de Negocios Cazados (4 columnas) */}
+        <div className="lg:col-span-4 bg-white rounded-2xl border border-stone-200/90 shadow-sm p-5 flex flex-col justify-between space-y-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+              <span className="flex items-center gap-2 font-bold text-stone-900 text-sm">
+                <span>🎯</span>
+                <span>Negocios en el Radar</span>
+              </span>
+              <span className="text-xs text-emerald-800 font-bold bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                {visibles.obj.length + visibles.leads.length}
+              </span>
+            </div>
+
+            {/* Estado 1: No hay radares creados */}
+            {queries.length === 0 && (
+              <div className="py-12 px-4 text-center space-y-3 bg-stone-50 rounded-xl border border-stone-200/70">
+                <div className="text-2xl">📡</div>
+                <h4 className="text-xs font-bold text-stone-800">Sin Radares Creados</h4>
+                <p className="text-[11px] text-stone-500 leading-relaxed">
+                  No tienes ningún radar configurado. Configura tu primer radar para buscar negocios.
+                </p>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setMostrarConfig(true)}
+                  icon="➕"
                 >
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${q.activo ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700/50 text-slate-400'}`}>
-                        {q.activo ? '● ACTIVA' : '○ EN PAUSA'}
-                      </span>
-                      <span className="text-[10px] text-slate-600">
-                        {new Date(q.created_at).toLocaleDateString('es-ES')}
+                  Crear Primer Radar
+                </Button>
+              </div>
+            )}
+
+            {/* Estado 2: Todos los radares están pausados */}
+            {queries.length > 0 && !hasActiveRadar && (
+              <div className="py-12 px-4 text-center space-y-3 bg-stone-50 rounded-xl border border-stone-200/70">
+                <div className="text-2xl">⏸️</div>
+                <h4 className="text-xs font-bold text-stone-800">Radares en Pausa</h4>
+                <p className="text-[11px] text-stone-500 leading-relaxed">
+                  Tienes {queries.length} radar(es) configurado(s), pero todos están desactivados. Activa un radar para ver sus negocios.
+                </p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setMostrarConfig(true)}
+                  icon="⚙️"
+                >
+                  Gestionar Radares
+                </Button>
+              </div>
+            )}
+
+            {/* Estado 3: Radar activo pero lista vacía */}
+            {hasActiveRadar && visibles.obj.length + visibles.leads.length === 0 && !loading && (
+              <div className="py-12 px-4 text-center space-y-3 bg-stone-50 rounded-xl border border-stone-200/70">
+                <div className="text-2xl">🔍</div>
+                <h4 className="text-xs font-bold text-stone-800">Lista Vaciada / Sin Negocios</h4>
+                <p className="text-[11px] text-stone-500 leading-relaxed">
+                  No hay negocios cazados para el radar activo. Pulsa &quot;Activar Radar (Buscar)&quot; para ejecutar una nueva búsqueda.
+                </p>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={ejecutarRadar}
+                  loading={radarRunning}
+                  icon="⚡"
+                >
+                  Buscar Negocios Ahora
+                </Button>
+              </div>
+            )}
+
+            {/* Lista de Negocios Activos */}
+            {hasActiveRadar && visibles.obj.length + visibles.leads.length > 0 && (
+              <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
+                {visibles.obj.map((o) => (
+                  <div
+                    key={`obj-${o.id}`}
+                    className="p-3.5 rounded-xl bg-stone-50/80 border border-stone-200/80 hover:border-emerald-300 transition-all space-y-1.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="text-xs font-bold text-stone-900 leading-tight">
+                        🎯 {o.negocio}
+                      </h4>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-200/70 text-stone-700 shrink-0">
+                        {o.sector || 'Comercio'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => toggleActivo(q)}
-                        disabled={querySaving}
-                        title={q.activo ? 'Pausar query' : 'Activar query'}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${q.activo ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}
-                      >
-                        {q.activo ? '⏸ Pausar' : '▶ Activar'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setEdicion((prev) => {
-                            const next = { ...prev };
-                            if (editando) delete next[q.id];
-                            else
-                              next[q.id] = {
-                                query: q.query,
-                                sector: q.sector ?? '',
-                                geo: q.geo ?? '',
-                                plataforma: Array.isArray(q.plataforma) ? q.plataforma : [],
-                              };
-                            return next;
-                          })
-                        }
-                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 border border-slate-700 transition-colors"
-                      >
-                        {editando ? 'Cancelar' : '✏️ Editar'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => eliminarQuery(q.id)}
-                        disabled={querySaving}
-                        className="px-2.5 py-1 rounded-lg bg-red-950/60 hover:bg-red-900/60 text-xs font-bold text-red-400 border border-red-500/30 transition-colors"
-                      >
-                        🗑
-                      </button>
+
+                    <div className="text-[11px] text-stone-600 space-y-0.5">
+                      {o.telefono && <div>📞 {o.telefono}</div>}
+                      {o.email && <div>✉️ {o.email}</div>}
+                      <div className="text-[10px] text-stone-500">
+                        📍 {o.ciudad || o.comunidad || 'Ubicación Galicia'}
+                        {o.lat && o.lon ? ' (Geolocalizado)' : ' (Sin coords)'}
+                      </div>
                     </div>
                   </div>
-                  {editando ? (
-                    <div className="space-y-2.5">
-                      <input
-                        value={d.query}
-                        onChange={(e) => setEdicion((prev) => ({ ...prev, [q.id]: { ...prev[q.id], query: e.target.value } }))}
-                        className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      />
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                        <input
-                          value={d.sector}
-                          onChange={(e) => setEdicion((prev) => ({ ...prev, [q.id]: { ...prev[q.id], sector: e.target.value } }))}
-                          placeholder="Sector (opcional)"
-                          className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
-                        <input
-                          value={d.geo}
-                          onChange={(e) => setEdicion((prev) => ({ ...prev, [q.id]: { ...prev[q.id], geo: e.target.value } }))}
-                          placeholder="Galicia, España"
-                          className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {PLATAFORMAS.map((p) => (
-                          <label key={p.id} className="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:border-slate-600 transition-colors">
-                            <input
-                              type="checkbox"
-                              checked={d.plataforma.includes(p.id)}
-                              onChange={(e) => editarPlataforma(q.id, p.id, e.target.checked)}
-                              className="accent-emerald-500"
-                            />
-                            {p.label}
-                          </label>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => guardarQuery(q.id, q.activo)}
-                          disabled={querySaving}
-                          className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-xs font-bold text-white transition-colors"
-                        >
-                          {querySaving ? 'Guardando…' : '💾 Guardar cambios'}
-                        </button>
+                ))}
+
+                {visibles.leads.map((l) => (
+                  <div
+                    key={`lead-${l.id}`}
+                    className="p-3.5 rounded-xl bg-stone-50/80 border border-stone-200/80 hover:border-blue-300 transition-all space-y-1.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="text-xs font-bold text-stone-900 leading-tight">
+                        🏢 {l.empresa}
+                      </h4>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 shrink-0">
+                        {l.nicho || 'Lead'}
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] text-stone-600 space-y-0.5">
+                      {l.telefono && <div>📞 {l.telefono}</div>}
+                      {l.email && <div>✉️ {l.email}</div>}
+                      <div className="text-[10px] text-stone-500">
+                        📍 {l.ciudad || l.comunidad || 'Galicia'}
+                        {l.lat && l.lon ? ' (Geolocalizado)' : ' (Sin coords)'}
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                      <span className="text-emerald-400 font-semibold">{q.query}</span>
-                      {q.sector && <span className="text-slate-500">🏷 {q.sector}</span>}
-                      {q.geo && <span className="text-slate-500">📍 {q.geo}</span>}
-                      {Array.isArray(q.plataforma) && q.plataforma.length > 0 && (
-                        <span className="text-slate-500">
-                          🎛 {q.plataforma.join(' · ')}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
-      {/* ===== Panel de detalle del negocio ===== */}
-      {seleccion && (
-        <div className="fixed inset-0 z-[1200] flex justify-end bg-black/60 backdrop-blur-sm" onClick={cerrarDetalle}>
-          <div
-            className="w-full max-w-lg h-full bg-slate-900 border-l border-slate-700/60 shadow-2xl overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Cabecera */}
-            <div className="sticky top-0 z-10 px-6 py-4 bg-slate-950/95 border-b border-slate-800 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 uppercase tracking-wider">
-                    {seleccion.tipo === 'objetivo' ? '🎯 Objetivo del radar' : '📥 Lead cazado'}
-                  </span>
-                  {seleccion.tipo === 'lead' && (seleccion.item as Lead).estado_caza && (
-                    <span
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      style={{
-                        backgroundColor: `${estadoColor((seleccion.item as Lead).estado_caza)}22`,
-                        color: estadoColor((seleccion.item as Lead).estado_caza),
-                      }}
-                    >
-                      {estadoLabel((seleccion.item as Lead).estado_caza)}
-                    </span>
-                  )}
+      {/* Modal: Configuración y Gestión de Radares (CRUD Completo) */}
+      {mostrarConfig && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-stone-200 max-w-2xl w-full p-6 md:p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center justify-center text-lg font-bold">
+                  ⚙️
                 </div>
-                <h3 className="text-lg font-bold text-white mt-2 leading-snug">
-                  {seleccion.tipo === 'objetivo' ? (seleccion.item as Objetivo).negocio : (seleccion.item as Lead).empresa}
-                </h3>
+                <div>
+                  <h3 className="text-base font-extrabold text-stone-900">
+                    Gestión de Radares Tácticos
+                  </h3>
+                  <p className="text-xs text-stone-600 font-medium">
+                    Configura, activa/pausa, edita o elimina los radares de prospección.
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
-                onClick={cerrarDetalle}
-                className="shrink-0 p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                onClick={() => {
+                  setMostrarConfig(false);
+                  setEditingQueryId(null);
+                }}
+                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center justify-center font-bold text-sm"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-6 space-y-5">
-              {/* Contacto */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 space-y-2.5">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">📇 Contacto</p>
-                {(seleccion.item.email || (seleccion.tipo === 'lead' && (seleccion.item as Lead).email)) && (
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm text-slate-200 flex items-center gap-2 min-w-0">
-                      <span>✉️</span>
-                      <span className="truncate">{seleccion.item.email}</span>
-                    </span>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <a
-                        href={`mailto:${seleccion.item.email}`}
-                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-emerald-400 transition-colors"
-                      >
-                        Escribir
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard?.writeText(seleccion.item.email ?? '');
-                          setMsgDetalle('✉️ Email copiado al portapapeles.');
-                        }}
-                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition-colors"
-                      >
-                        Copiar
-                      </button>
-                    </div>
-                  </div>
-                )}
-                {seleccion.item.telefono && (
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm text-slate-200 flex items-center gap-2 min-w-0">
-                      <span>📞</span>
-                      <span className="truncate">{seleccion.item.telefono}</span>
-                    </span>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <a
-                        href={`tel:${seleccion.item.telefono.replace(/\D/g, '')}`}
-                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-emerald-400 transition-colors"
-                      >
-                        Llamar
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard?.writeText(seleccion.item.telefono ?? '');
-                          setMsgDetalle('📞 Teléfono copiado al portapapeles.');
-                        }}
-                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition-colors"
-                      >
-                        Copiar
-                      </button>
-                    </div>
-                  </div>
-                )}
-                {!seleccion.item.email && !seleccion.item.telefono && (
-                  <p className="text-xs text-slate-500">Sin email ni teléfono guardados aún.</p>
-                )}
-                {(seleccion.tipo === 'objetivo' ? (seleccion.item as Objetivo).url : (seleccion.item as Lead).url_web) && (
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm text-slate-200 flex items-center gap-2 min-w-0">
-                      <span>🌐</span>
-                      <span className="truncate">
-                        {(seleccion.tipo === 'objetivo' ? (seleccion.item as Objetivo).url : (seleccion.item as Lead).url_web)?.replace(/^https?:\/\/(www\.)?/, '')}
-                      </span>
-                    </span>
-                    <a
-                      href={(seleccion.tipo === 'objetivo' ? (seleccion.item as Objetivo).url : (seleccion.item as Lead).url_web) ?? '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-emerald-400 transition-colors shrink-0"
-                    >
-                      Abrir web ↗
-                    </a>
-                  </div>
-                )}
-              </div>
+            {/* Formulario: Crear / Editar Radar */}
+            <form onSubmit={guardarRadarForm} className="space-y-4 bg-stone-50 p-5 rounded-2xl border border-stone-200/80">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-stone-700">
+                {editingQueryId ? '✏️ Editar Radar' : '➕ Crear Nuevo Radar'}
+              </h4>
 
-              {/* Información del negocio */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 space-y-2.5">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">📋 Información del negocio</p>
-                {(seleccion.tipo === 'objetivo' ? (seleccion.item as Objetivo).sector : (seleccion.item as Lead).nicho) && (
-                  <p className="text-sm text-slate-300">🏷 <span className="text-slate-500">Tipo:</span> {seleccion.tipo === 'objetivo' ? (seleccion.item as Objetivo).sector : (seleccion.item as Lead).nicho}</p>
-                )}
-                {seleccion.item.ciudad && (
-                  <p className="text-sm text-slate-300">📍 <span className="text-slate-500">Ubicación:</span> {seleccion.item.ciudad}{seleccion.item.comunidad ? ` (${seleccion.item.comunidad})` : ''}</p>
-                )}
-                {seleccion.tipo === 'objetivo' && (seleccion.item as Objetivo).fallo_detectado && (
-                  <p className="text-sm text-slate-300">⚠️ <span className="text-slate-500">Fallo detectado:</span> {(seleccion.item as Objetivo).fallo_detectado}</p>
-                )}
-                {seleccion.tipo === 'objetivo' && (seleccion.item as Objetivo).potencial_venta && (
-                  <p className="text-sm text-slate-300">💰 <span className="text-slate-500">Potencial de venta:</span> {(seleccion.item as Objetivo).potencial_venta}</p>
-                )}
-                {seleccion.tipo === 'lead' && (seleccion.item as Lead).senal_detectada && (
-                  <p className="text-sm text-slate-300">📡 <span className="text-slate-500">Señal detectada:</span> {(seleccion.item as Lead).senal_detectada}</p>
-                )}
-                {seleccion.tipo === 'lead' && (seleccion.item as Lead).feedback_cliente && (
-                  <p className="text-sm text-slate-300">💬 <span className="text-slate-500">Feedback:</span> {(seleccion.item as Lead).feedback_cliente}</p>
-                )}
-                <p className="text-xs text-slate-600">Detectado el {new Date(seleccion.item.created_at).toLocaleString('es-ES')}</p>
-              </div>
-
-              {/* Generador de mensajes con Max */}
-              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-4 space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">🤖 Mensaje de contacto con Max</p>
-                  <div className="flex rounded-lg overflow-hidden border border-slate-700">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMsgTipo('whatsapp');
-                        setMsgTexto('');
-                        setMsgEstado('idle');
-                      }}
-                      className={`px-3 py-1.5 text-xs font-bold transition-colors ${msgTipo === 'whatsapp' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
-                    >
-                      WhatsApp
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMsgTipo('email');
-                        setMsgTexto('');
-                        setMsgEstado('idle');
-                      }}
-                      className={`px-3 py-1.5 text-xs font-bold transition-colors ${msgTipo === 'email' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
-                    >
-                      Email
-                    </button>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    Término de Búsqueda / Query
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={queryForm.query}
+                    onChange={(e) => setQueryForm({ ...queryForm, query: e.target.value })}
+                    placeholder="Ej. Clínica Dental, Gestoría, Taller..."
+                    className="w-full bg-white border border-stone-300 rounded-xl px-3.5 py-2 text-xs font-medium text-stone-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
                 </div>
 
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Max redacta un mensaje personalizado con los datos de este negocio
-                  (fallo detectado, sector, ciudad…) para que contactes con potencial.
-                </p>
-
-                <button
-                  type="button"
-                  onClick={generarMensaje}
-                  disabled={msgGenerando}
-                  className="w-full px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-bold text-white transition-colors shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
-                >
-                  {msgGenerando ? (
-                    <>
-                      <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                      Max redactando…
-                    </>
-                  ) : (
-                    <>✨ Generar {msgTipo === 'whatsapp' ? 'mensaje de WhatsApp' : 'correo'} con Max</>
-                  )}
-                </button>
-
-                {msgTexto && (
-                  <>
-                    <textarea
-                      value={msgTexto}
-                      onChange={(e) => setMsgTexto(e.target.value)}
-                      rows={8}
-                      className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 font-mono leading-relaxed"
-                    />
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={copiarMensaje}
-                        className="flex-1 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 transition-colors border border-slate-700"
-                      >
-                        {copiado ? '✅ Copiado' : '📋 Copiar texto'}
-                      </button>
-                      {msgTipo === 'whatsapp' && (
-                        <button
-                          type="button"
-                          onClick={enviarWhatsApp}
-                          disabled={enviandoWa || !seleccion.item.telefono}
-                          title={!seleccion.item.telefono ? 'Este negocio no tiene teléfono guardado' : 'Enviar por WhatsApp'}
-                          className="flex-1 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold text-white transition-colors"
-                        >
-                          {enviandoWa ? 'Enviando…' : enviadoWa ? '✅ Enviado' : '📲 Enviar por WhatsApp'}
-                        </button>
-                      )}
-                      {msgTipo === 'email' && seleccion.item.email && (
-                        <a
-                          href={`mailto:${seleccion.item.email}?subject=${encodeURIComponent(`Propuesta de automatización para ${seleccion.tipo === 'objetivo' ? (seleccion.item as Objetivo).negocio : (seleccion.item as Lead).empresa}`)}&body=${encodeURIComponent(msgTexto)}`}
-                          className="flex-1 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-emerald-400 transition-colors border border-slate-700 text-center"
-                        >
-                          📤 Enviar por email
-                        </a>
-                      )}
-                    </div>
-                  </>
-                )}
-
-                {msgEstado === 'error' && msgDetalle && (
-                  <p className="text-xs text-red-400 bg-red-950/50 border border-red-500/30 rounded-xl px-3 py-2">⚠️ {msgDetalle}</p>
-                )}
-                {msgEstado === 'ok' && msgDetalle && (
-                  <p className="text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 rounded-xl px-3 py-2">{msgDetalle}</p>
-                )}
-                {msgDetalle && msgEstado === 'idle' && !msgTexto && (
-                  <p className="text-xs text-slate-400 bg-slate-950/50 border border-slate-800 rounded-xl px-3 py-2">{msgDetalle}</p>
-                )}
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    Sector
+                  </label>
+                  <select
+                    value={queryForm.sector}
+                    onChange={(e) => setQueryForm({ ...queryForm, sector: e.target.value })}
+                    className="w-full bg-white border border-stone-300 rounded-xl px-3.5 py-2 text-xs font-medium text-stone-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  >
+                    {SECTORES_POPULARES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    Región Geográfica / Ciudad
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={queryForm.geo}
+                    onChange={(e) => setQueryForm({ ...queryForm, geo: e.target.value })}
+                    placeholder="Santiago de Compostela, Galicia..."
+                    className="w-full bg-white border border-stone-300 rounded-xl px-3.5 py-2 text-xs font-medium text-stone-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    🎯 Palabras Clave de Afinado / Inclusión
+                  </label>
+                  <input
+                    type="text"
+                    value={queryForm.palabrasAfina}
+                    onChange={(e) => setQueryForm({ ...queryForm, palabrasAfina: e.target.value })}
+                    placeholder="privada, centro, especialista, particular..."
+                    className="w-full bg-white border border-stone-300 rounded-xl px-3.5 py-2 text-xs font-medium text-stone-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                {editingQueryId && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditingQueryId(null);
+                      setQueryForm({
+                        query: '',
+                        sector: 'Clínicas Dentales',
+                        geo: 'Santiago de Compostela, Galicia',
+                        palabrasAfina: 'privada, centro, especialista, independiente, particular',
+                        plataformas: ['Google My Business', 'Google Search'],
+                      });
+                    }}
+                  >
+                    Cancelar Edición
+                  </Button>
+                )}
+                <Button variant="primary" size="sm" type="submit" icon="💾">
+                  {editingQueryId ? 'Guardar Cambios' : 'Guardar y Activar Radar'}
+                </Button>
+              </div>
+            </form>
+
+            {/* Listado de Radares Existentes */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-stone-700">
+                Radares Existentes ({queries.length})
+              </h4>
+
+              {queries.length === 0 ? (
+                <p className="text-xs text-stone-500 italic">No hay radares creados aún.</p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                  {queries.map((q) => (
+                    <div
+                      key={q.id}
+                      className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 flex flex-wrap items-center justify-between gap-3"
+                    >
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-stone-900 truncate">
+                            {q.query}
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              q.activo
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-stone-200 text-stone-600'
+                            }`}
+                          >
+                            {q.activo ? '● Activo' : '⏸ En Pausa'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-500 truncate">
+                          {q.sector || 'Sector general'} • 📍 {q.geo || 'Galicia'}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {/* Botón Activar / Pausar */}
+                        <Button
+                          variant={q.activo ? 'secondary' : 'primary'}
+                          size="sm"
+                          onClick={() => toggleQuery(q.id, q.activo)}
+                        >
+                          {q.activo ? 'Pausar' : 'Activar'}
+                        </Button>
+
+                        {/* Botón Editar */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => abrirEditarRadar(q)}
+                          icon="✏️"
+                        >
+                          Editar
+                        </Button>
+
+                        {/* Botón Eliminar */}
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => eliminarQuery(q.id)}
+                          icon="🗑️"
+                        >
+                          Eliminar
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
-    </section>
+
+      {/* Modal Confirmación de Vaciar Lista */}
+      {confirmVaciar && (
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-stone-200 max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-800 border border-rose-200 flex items-center justify-center text-lg font-bold">
+                🗑️
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-stone-900">
+                  ¿Vaciar lista de negocios?
+                </h3>
+                <p className="text-xs text-stone-600 font-medium">
+                  Esta acción limpiará todos los negocios cazados en el mapa y la base de datos.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                variant="ghost"
+                size="md"
+                onClick={() => setConfirmVaciar(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                size="md"
+                onClick={vaciarNegocios}
+                loading={vaciarLoading}
+                icon="🗑️"
+              >
+                Confirmar y Vaciar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

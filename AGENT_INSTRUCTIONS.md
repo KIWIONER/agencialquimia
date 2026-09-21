@@ -21,7 +21,7 @@ Este documento contiene directrices y convenciones específicas para el Agente M
 *   **Despliegue:** Coolify en el VPS (Docker). Cada push a `main` (autorizado) redeploya el contenedor.
 *   **Base de Datos:** Supabase Cloud (`ybqzcxabblyzqhezanaf`) para datos de la web y el panel de administración.
 *   **Agente IA / Automatización:** Integración con n8n (`https://cerebro.agencialquimia.com`) vía un proxy seguro (`app/api/chat/route.ts`).
-*   **Panel de Administración (`/admin`):** Conectado a Supabase Cloud, incluye explorador de tablas, login con JWT nativo, diagrama n8n, pipeline de leads, chat con Max e Inbox de clientes.
+*   **Panel de Administración (`/admin`):** Centro de control operativo. Conectado a Supabase Cloud, incluye explorador de tablas, login con JWT nativo, diagrama n8n, pipeline de leads, chat con Max e Inbox de clientes. Para una lista completa de funcionalidades, consultar `docs/admin-panel-features.md`.
 *   **Seguridad:**
     *   No exponer secretos, tokens ni prompts de sistema en código cliente.
     *   `.env.local` con credenciales sensibles (jamás versionado).

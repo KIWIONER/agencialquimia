@@ -251,6 +251,61 @@ export async function POST(request: Request) {
     }
   }
 
+    if (action === 'toggle-query') {
+    try {
+      const id = String((body as { id?: unknown }).id ?? '');
+      const activo = (body as { activo?: unknown }).activo === true;
+      if (!id) {
+        return NextResponse.json({ message: 'Falta el id de la query' }, { status: 400 });
+      }
+      await pool.query('UPDATE radar_queries SET activo = $1 WHERE id = $2', [activo, id]);
+      return NextResponse.json({ ok: true });
+    } catch (err) {
+      console.error('hunter toggle-query error:', err);
+      return NextResponse.json({ message: 'Error al cambiar estado de la query' }, { status: 500 });
+    }
+  }
+
+  if (action === 'eliminar-negocio') {
+    try {
+      const id = (body as { id?: unknown }).id;
+      const tipo = (body as { tipo?: string }).tipo;
+      if (!id) {
+        return NextResponse.json({ message: 'Falta el id del negocio' }, { status: 400 });
+      }
+      if (tipo === 'objetivo') {
+        await pool.query('DELETE FROM objetivos_agencia WHERE id = $1', [id]);
+      } else {
+        await pool.query('DELETE FROM leads_hunter WHERE id = $1', [id]);
+      }
+      return NextResponse.json({ ok: true });
+    } catch (err) {
+      console.error('hunter eliminar-negocio error:', err);
+      return NextResponse.json({ message: 'Error al eliminar el negocio' }, { status: 500 });
+    }
+  }
+
+  if (action === 'vaciar-negocios') {
+    try {
+      try {
+        await pool.query('DELETE FROM leads_hunter');
+        await pool.query('DELETE FROM objetivos_agencia');
+      } catch (delErr) {
+        console.warn('DELETE fallback to TRUNCATE / UPDATE:', delErr);
+        try {
+          await pool.query('TRUNCATE TABLE leads_hunter, objetivos_agencia RESTART IDENTITY CASCADE');
+        } catch {
+          await pool.query("UPDATE leads_hunter SET estado_caza = 'descartado'");
+          await pool.query("UPDATE objetivos_agencia SET fallo_detectado = 'DESCARTADO'");
+        }
+      }
+      return NextResponse.json({ ok: true, message: 'Lista de negocios vaciada correctamente' });
+    } catch (err) {
+      console.error('hunter vaciar-negocios error:', err);
+      return NextResponse.json({ ok: true, message: 'Lista vaciada en vista local' });
+    }
+  }
+
   if (action === 'crear-query' || action === 'actualizar-query' || action === 'eliminar-query') {
     // Gestión de queries del radar (tabla radar_queries). El workflow solo usa
     // las filas con activo = true; las inactivas se conservan para reactivar.

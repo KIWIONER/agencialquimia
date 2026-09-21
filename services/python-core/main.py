@@ -1,21 +1,24 @@
 """
 AgenciAlquimia Python Core - FastAPI Sidecar
 =============================================
-Microservicio interno para procesamiento pesado (scraping, scoring, PDF, RAG).
-Comunicación segura con Next.js mediante HMAC SHA-256 por cabecera X-Internal-Signature.
+Microservicio interno para procesamiento pesado (scraping, scoring, PDF, RAG, Cookies y Sesiones).
+Comunicación segura con Next.js mediante HMAC SHA-256 por cabecera X-Internal-Signature y Cookies HttpOnly.
 """
 import os
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from dependencies.auth import verify_internal_signature
 from routers.hunter import router as hunter_router
+from routers.image import router as image_router
 from routers.pdf import router as pdf_router
+from routers.market_ws import router as market_ws_router
 from routers.scoring import router as scoring_router
+from routers.session import router as session_router
 
 app = FastAPI(
     title="AgenciAlquimia Python Core API",
-    description="Servicio interno sidecar de Python para procesamiento pesado y automatización",
-    version="1.0.0"
+    description="Servicio interno sidecar de Python para procesamiento pesado, automatización y gestión de sesiones",
+    version="1.1.0"
 )
 
 app.add_middleware(
@@ -28,8 +31,11 @@ app.add_middleware(
 
 # Incluir routers registrados
 app.include_router(hunter_router)
+app.include_router(image_router)
 app.include_router(pdf_router)
+app.include_router(market_ws_router)
 app.include_router(scoring_router)
+app.include_router(session_router)
 
 @app.get("/health")
 async def health_check():
@@ -37,7 +43,7 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "agencialquimia-python-core",
-        "version": "1.0.0"
+        "version": "1.1.0"
     }
 
 @app.post("/test-auth", dependencies=[Depends(verify_internal_signature)])
