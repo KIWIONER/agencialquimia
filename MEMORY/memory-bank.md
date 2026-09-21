@@ -2,7 +2,7 @@
 
 Este documento constituye el **Banco de Memoria a Largo Plazo** del proyecto **AgenciAlquimia**. Su propósito es almacenar el contexto del negocio, la arquitectura técnica, las decisiones de diseño, el historial de auditorías y las directivas de desarrollo para garantizar continuidad, estabilidad y cero regresiones en futuras iteraciones.
 
-> **Última actualización:** 16 de agosto de 2026 — registro de la nueva situación actual: despliegue en producción sobre VPS propio y desarrollo vía git worktrees.
+> **Última actualización:** 30 de agosto de 2026 — registro de dinamización del Hero banner, depuración de n8n webhook/Gemini rate limits, y resolución de hidratación/CSS tras recompilación.
 
 ---
 
@@ -20,139 +20,146 @@ Este documento constituye el **Banco de Memoria a Largo Plazo** del proyecto **A
 
 ## 2. Situación Actual — Despliegue en VPS Propio (Agosto 2026) 🖥️
 
-> **Cambio fundamental:** el proyecto ya **NO se despliega en Vercel**. Producción corre **24/7 en el VPS propio de AgenciAlquimia** (esta máquina). Todo el desarrollo se realiza directamente en el VPS mediante **git worktrees**.
+> **Cambio fundamental:** el proyecto ya **NO se despliega en Vercel**. Todo corre sobre un **VPS propio con Coolify**, Docker y Traefik.
 
 ### Hosting y Ejecución en Producción
-
-* **Servidor:** VPS propio (dominio `agencialquimia.com`; subdominio del agente IA: `cerebro.agencialquimia.com`).
-* **Plataforma de despliegue:** **Coolify** (PaaS self-hosted en el VPS). Cada push a `main` dispara la construcción de una imagen Docker etiquetada con el **hash del commit** y el despliegue del contenedor (Next.js v15.5.22 con `next start` dentro del contenedor, cwd `/app`).
-* **Proxy reverso:** **Traefik** (`coolify-proxy`) en los puertos **80/443**.
-* **Cache de estáticos:** `nginx.conf` del repo — caché inmutable de 1 año (`max-age=31536000, immutable`) para `/assets`, `/images`, `/fonts` y `/videos`.
-* **Supabase:** **dos instancias** (ver subsección dedicada abajo):
-  - **Supabase Cloud** (`ybqzcxabblyzqhezanaf.supabase.co`) → **es el que usa la web** (datos reales de leads/chat vía el explorador del admin).
-  - **Supabase self-hosted en el VPS** (stack docker completo: auth, storage, kong, studio, postgrest...) → instancia separada, la web **no la consume**.
-* **Otra infraestructura dockerizada:** n8n (puerto **5678**, expuesto vía `https://cerebro.agencialquimia.com`), PostgreSQL (**5432**).
+* **Servidor VPS:** `195.201.118.14` (Ubuntu / Debian).
+* **Plataforma de Despliegue:** **Coolify** — gestión de contenedores Docker, variables de entorno, SSL automático (Let's Encrypt) y proxy inverso Traefik.
+* **Dominio Principal:** `agencialquimia.com` (producción) y subdominios `cerebro.agencialquimia.com` (n8n), etc.
+* **Pipeline de CI/CD:** cada `git push` a `main` dispara el webhook de Coolify → pull del código → build de la imagen Docker etiquetada con el hash del commit → despliegue sin caída de servicio (zero-downtime).
+* **CI de Validación:** `.github/workflows/ci.yml` ejecuta typecheck (`tsc`), linter (`eslint`), tests (`vitest`) y build de Next.js en cada PR/push a `main`.
 
 ### Supabase: dos instancias y panel admin conectado (Agosto 2026)
-
-* **Instancia principal (producción web):** Supabase **Cloud** `https://ybqzcxabblyzqhezanaf.supabase.co` — **11 tablas** expuestas vía PostgREST, todas verificadas con HTTP 200 con la publishable key (`sb_publishable_...`, en `.env.local` como `PUBLIC_SUPABASE_URL`/`PUBLIC_SUPABASE_ANON_KEY`). Datos reales: `leads_agencialquimia` (3 filas), `radar_queries` (4), resto vacías.
-* **Las 11 tablas:** `leads_agencialquimia`, `leads_hunter`, `chat_messages`, `chat_messages_alquimia`, `chat_messages_cerebro`, `conversaciones_alquimia`, `n8n_chat_histories`, `control_rutas`, `ideas_agencia`, `objetivos_agencia`, `radar_queries`.
-* **Explorador en el panel admin:** pestaña "Tablas Supabase" en `app/admin/page.tsx` → API routes server-side `app/api/admin/tables/route.ts` (descubrimiento por OpenAPI + sondas paralelas + fallback) y `app/api/admin/data/route.ts` (filas paginadas con `Prefer: count=exact` + fallback mock) → componente `components/admin/DataTable.tsx` (dropdown de tablas, columnas auto-detectadas, badges, estado de carga, banner de Modo Vista Previa si falla la conexión). Sin `@supabase/supabase-js` (fetch nativo).
-* **Instancia secundaria (VPS):** stack docker en Coolify `jo0oosc8c0k088gg0kowokco` con tablas en esquema `public` (`leads_agencialquimia` 2 filas, `chat_messages` 126, `objetivos_agencia` 0) y `fruteria` (demo). Acceso y credenciales: `notes/supabase-vps.md` + skill `supabase-sql`.
-* **⚠️ Incidente de borrado periódico (16-ago):** Descubierto un proceso externo que borra sistemáticamente las subcarpetas del worktree a las HH:41:44. Defensa activa implementada: `auditd` para capturar el PID/comando, y rsync periódico a `/root/backups/agencialquimia/proteccion/` (máx. 10 min de pérdida). Recuperación exitosa probada restaurando el código.
+* **Instancia Cloud (Legacy):** `aebewqtzmtyffsfsrbfd.supabase.co` — retiene leads históricos y el proyecto original.
+* **Instancia Local en VPS (Producción):** desplegada en Coolify vía Docker (`195.201.118.14:8000`), con PostgreSQL nativo en puerto `5432` (`postgres://postgres:pw_...@195.201.118.14:5432/postgres`).
+* **Panel Administrativo:** `/admin` conecta directamente a la base de datos PostgreSQL de Supabase en el VPS mediante el cliente `pg` (`lib/db.ts`) y variables `PANEL_DB_*` en `.env.local`.
 
 ### Repositorio y Flujo de Trabajo
-
-* **Remoto:** `git@github.com:KIWIONER/agencialquimia.git` — rama `main`, sincronizada con `origin/main`.
-* **Worktree de desarrollo (este repo):** `/root/.openclaw/worktrees/agencialquimia-web`.
-* **Proyecto hermano:** `/root/agencialquimia-agent` — agente/automatización n8n asociada a la web.
-* **Entorno:** `.env.local` con `N8N_WEBHOOK_URL=https://cerebro.agencialquimia.com/webhook/v1/agente/consulta` (proxy `/api/chat` → n8n, timeout 8s y resiliencia CRO a WhatsApp).
+* **Repositorio Git:** `git@github.com:KIWIONER/agencialquimia.git` (rama activa: `main`).
+* **Entorno de Trabajo Local en VPS:** `/root/.openclaw/worktrees/agencialquimia-web` (alias symlink en `/root/agencialquimia-web`).
+* **Protocolo de Push:** **NUNCA realizar `git push` sin confirmación explícita del usuario.**
+* **Copias de Seguridad:** `/root/scripts/backup-agencialquimia.sh` (cron diario 05:00 UTC) genera snapshots y mirror del repositorio en `/root/backups/agencialquimia/`.
 
 ### Nota sobre rutas antiguas
-
-* Las rutas estilo `c:/Proyectos/agencialquimia/` (Windows) que aparecen en secciones posteriores están **obsoletas**: la ubicación real del código es la del worktree en el VPS indicada arriba.
+Cualquier referencia en documentación anterior a `/home/mati/` o despliegues directos en Vercel queda obsoleta. Las rutas activas son exclusivamente las del VPS (`/root/.openclaw/worktrees/...`).
 
 ---
 
 ## 3. Arquitectura de Software & Stack Tecnológico
 
-El proyecto se encuentra 100% migrado, corregido y unificado bajo un único ecosistema **Next.js (App Router)**:
-
 ```
-/root/.openclaw/worktrees/agencialquimia-web/   # Worktree en el VPS
-├── app/                        # Next.js App Router (Páginas, Rutas de API y Layouts)
-│   ├── admin/                  # Dashboard de Administración unificado (/admin)
-│   ├── api/chat/               # Backend Proxy Seguro para el agente de n8n (/api/chat)
-│   ├── aviso-legal/            # Página legal nativa en TypeScript (/aviso-legal)
-│   ├── politica-de-privacidad/ # Página legal nativa en TypeScript (/politica-de-privacidad)
-│   ├── robots.ts               # Generador dinámico nativo de robots.txt (/robots.txt)
-│   ├── sitemap.ts              # Generador dinámico nativo de sitemap.xml (/sitemap.xml)
-│   ├── globals.css             # Estilos globales con fallbacks WPO y tokens de TailwindCSS v4
-│   ├── layout.tsx              # Root Layout con fuentes precargadas (WPO), JsonLd y Preconnect
-│   └── page.tsx                # Landing Page Principal en Dark Charcoal Theme (#0b0d10)
-├── components/                 # Componentes React TSX Modulares (Navbar, Hero, Services, Demos, etc.)
-├── public/                     # Recursos estáticos servidos nativamente por Next.js (assets, favicons)
-├── lib/                        # Utilidades centralizadas (metadata.ts para SEO)
-├── types/                      # Interfaces TypeScript strictly (chat.ts)
-├── services/                   # Microservicios auxiliares sidecar de AgenciAlquimia
-│   └── python-core/            # Microservicio FastAPI de alto rendimiento (scraping, scoring)
-├── docs/                       # Documentación y planos detallados de integración
-├── next.config.mjs             # Configuración de compilación SWC y compresión Brotli/Gzip
-├── .env.local / .env.example   # Variables de entorno parametrizadas (N8N_WEBHOOK_URL)
-├── .github/                    # Planes de implementación (implementation-plan.md)
-├── audit/                      # Auditoría técnica detallada (AUDIT.md)
-└── MEMORY/                     # Banco de memoria a largo plazo (memory-bank.md)
+┌──────────────────────────────────────────────────────────────────────────┐
+│                            NAVEGADOR CLIENTE                            │
+│  Next.js 15 (React 19) · TailwindCSS v4 · Space Grotesk · Inter         │
+└──────────────┬─────────────────────────────┬─────────────────────────────┘
+               │ HTTPS                       │ HTTPS (Proxy Next.js)
+               ▼                             ▼
+┌──────────────────────────────┐   ┌───────────────────────────────────────┐
+│     Next.js App Router       │   │           n8n Webhook / API           │
+│   (SSR / SSG / RSC / APIs)   │   │     cerebro.agencialquimia.com        │
+│   /admin · /api/admin/*      │   │   Agente Maestro IA (Alex / Max)      │
+└──────────────┬───────────────┘   └───────────────────┬───────────────────┘
+               │                                       │
+               ├───────────────────┬───────────────────┤
+               ▼                   ▼                   ▼
+┌──────────────────────────┐ ┌──────────────┐ ┌─────────────────────────────┐
+│  PostgreSQL (Supabase)   │ │ FastAPI Core │ │  LLMs Externos (Gemini,    │
+│  leads_agencialquimia    │ │ (Python 3.12)│ │  Anthropic Claude, Ollama)  │
+│  conversaciones_alquimia │ │  Sidecar     │ └─────────────────────────────┘
+└──────────────────────────┘ └──────────────┘
 ```
 
 ### Tabla de Tecnologías
-
-| Dominio | Tecnología Seleccionada | Versión / Estado |
+| Capa | Tecnología | Propósito |
 | :--- | :--- | :--- |
-| **Framework Base** | Next.js (App Router) | v15.5.22 |
-| **Biblioteca UI** | React | v19.0.0 |
-| **Lenguaje Oficial** | TypeScript (`.tsx`, `.ts`) | v5.7.3 (Tipado estricto con 0 errores) |
-| **Sistema de Estilos** | TailwindCSS v4 + PostCSS | v4.0.0 (`@tailwindcss/postcss`) |
-| **Iconografía** | Lucide React | v0.474.0 |
-| **Integración IA** | Webhook n8n vía API Proxy | Parametrizado vía `process.env.N8N_WEBHOOK_URL` |
-| **Base de Datos / BaaS** | — | Sin BaaS en uso (Supabase retirado en agosto 2026: dependencia sin uso) |
-| **Tipografía** | Google Fonts via `next/font` | *Space Grotesk* & *Inter* (Precarga WPO habilitada) |
+| **Framework Web** | Next.js 15.1 (App Router) | Renderizado híbrido SSR/SSG, enrutamiento, Server Actions y APIs. |
+| **Biblioteca UI** | React 19 + TypeScript (Strict) | Componentes tipados, interactividad y cero `any`. |
+| **Estilos & Diseño** | TailwindCSS v4 + CSS Tokens | Tema Dark Charcoal (`#0b0d10`), tokens esmeralda y animaciones GPU. |
+| **Orquestador IA** | n8n (`cerebro.agencialquimia.com`) | Flujos de cualificación de leads, agentes comerciales y WhatsApp. |
+| **Microservicio Core** | FastAPI (Python 3.12 Sidecar) | Scraping asíncrono (Hunter), scoring predictivo ML y PDFs. |
+| **Base de Datos** | PostgreSQL (Supabase VPS) | Almacén persistente de leads, sesiones de chat y métricas CRM. |
+| **Testing** | Vitest + Testing Library | Suite de pruebas unitarias y de integración de componentes. |
 
 ---
 
 ## 4. Sistema de Diseño Visual, Accesibilidad & WPO (Dark Charcoal Theme)
 
-* **Fondo Principal:** `#0b0d10` (negro-grisáceo carbón profundo) con entramado radial esmeralda (`rgba(16, 185, 129, 0.12)`).
-* **Tarjetas y Módulos:** `#161a22` (`glass-card-dark`) con desenfoque de fondo (`backdrop-blur`) y bordes de cristal (`rgba(255, 255, 255, 0.08)`).
-* **Acentos de Marca Neón:** `#10b981` (verde esmeralda) y `#34d399` (verde neón brillante).
-* **Cumplimiento Accesibilidad WCAG 2.1 AA:** Ratios de contraste > 5.5:1 en todos los textos (`text-gray-200`, `text-emerald-300`).
-* **Optimización WPO (Zero FOIT):** Pila de fuentes del sistema (`system-ui`, `-apple-system`, `Roboto`, `sans-serif`) como fallback directo mientras carga la fuente `.woff2` en paralelo.
+* **Fondo Principal:** `#0b0d10` (Dark Charcoal).
+* **Fondo de Tarjetas:** `#161a22` (`glass-card-dark`, blur `12px`).
+* **Acentos Neón:** `#10b981` (Esmeralda Principal) y `#34d399` (Glow / Shimmer).
+* **Tipografías:** *Space Grotesk* (titulares) e *Inter* (cuerpo y datos) precargadas vía `next/font`.
+* **Accesibilidad:** Cumplimiento estricto WCAG 2.1 AA (contraste ≥ 4.5:1, etiquetas ARIA, navegación por teclado, regiones vivas `aria-live="polite"`).
 
 ---
 
 ## 5. Soluciones de Auditoría & WPO Resueltas
 
-1. **Ajuste de Ratios de Contraste WCAG 2.1 AA:**
-   - Elevados los textos secundarios en [components/Demos.tsx](components/Demos.tsx), [components/Footer.tsx](components/Footer.tsx) y [components/Services.tsx](components/Services.tsx) a `text-gray-200` y `text-emerald-300`, superando la exigencia de contraste 4.5:1 en Lighthouse.
-2. **Compresión SWC y Minificación de JS:**
-   - Creado [next.config.mjs](next.config.mjs) habilitando compresión global y limpieza de `console.log` en producción.
-3. **Motores Dinámicos de SEO Nativo:**
-   - Creados [app/robots.ts](app/robots.ts) y [app/sitemap.ts](app/sitemap.ts).
-4. **Eliminación de la Cadena Crítica LCP Bloqueante:**
-   - Habilitado `preload: true` en `next/font/google` e inyectadas etiquetas `preconnect`.
-5. **Proxy Backend Seguro para IA (`/api/chat`):**
-   - Parametrizado con `process.env.N8N_WEBHOOK_URL` y timeout de 8s con resiliencia CRO a WhatsApp.
+1. **Zero FOIT / FOUT:** Fuentes optimizadas con `next/font` y fallbacks del sistema.
+2. **Animaciones Aceleradas por Hardware:** Uso exclusivo de `transform: translate3d(...)`, `opacity` y `will-change` para 60fps constantes sin repintados de layout.
+3. **Seguridad Inter-Servicio:** Tokens JWT en cookies HttpOnly y firmas HMAC SHA-256 (`X-Internal-Signature`) para la comunicación con microservicios internos.
 
 ---
 
 ## 6. Reglas & Directivas de Desarrollo Permanentes
 
-* **Tipado TypeScript Estricto:** Prohibido el uso de `any` no tipado. Definir contratos en `types/`.
-* **Comentarios y Documentación Exhaustiva:** Todo archivo nuevo o modificado DEBE incluir un bloque de comentarios superior JSDoc en español y comentarios explicativos en cada función y sección JSX.
-* **Verificación Automatizada:** Antes de dar por finalizada una tarea, se debe verificar `npx tsc --noEmit` y `npm run build` con 0 errores.
-* **Preservación del Negocio:** Conservar todo el copy comercial orientado a pymes en español de España.
+1. **PROHIBIDO GIT PUSH SIN PERMISO EXPLÍCITO:** Preguntar siempre al usuario antes de enviar cambios al remoto.
+2. **TypeScript Estricto:** Tipado 100% explícito, contratos en `types/`.
+3. **Documentación JSDoc en Español:** Cada archivo y componente debe incluir su cabecera explicativa.
+4. **Verificación Cuádruple Obligatoria:** `npx tsc --noEmit`, `npm run lint`, `npm test` y `npm run build` deben pasar con 0 errores antes de entregar código.
 
 ---
 
-## 7. Historial de Hitos y Estado de Compilación
+## 7. Historial de Hitos y Registro de Cambios
 
-| Fecha | Hito Alcanzado | Estado de Validación |
-| :--- | :--- | :---: |
-| **Julio 2026** | Creación de `CONTEXT.md` y auditoría inicial `AUDIT.md`. | ✅ Verificado |
-| **Julio 2026** | Migración completa a Next.js 15, React 19, TS y Tailwind v4 (5 Fases). | ✅ `npx tsc --noEmit`: 0 Errores |
-| **Julio 2026** | Aplicación del Tema Negro-Grisáceo (`#0b0d10`) y botón `/admin` en `Navbar`. | ✅ `npm run build`: 2.6s Éxito |
-| **Julio 2026** | Creación de `MEMORY/memory-bank.md` para persistencia a largo plazo. | ✅ Registrado |
-| **Julio 2026** | Ejecución de la Fase 5: Estructuración `/public`, páginas legales y `.env.local`. | ✅ 8/8 páginas compiladas |
-| **Julio 2026** | Optimización WPO LCP: Precarga WOFF2, `preconnect` e inyección fallback Zero FOIT. | ✅ 8/8 páginas en 3.0s |
-| **Julio 2026** | Creación de `next.config.mjs`, `app/robots.ts` y `app/sitemap.ts` nativos. | ✅ 10/10 rutas en 5.0s |
-| **Julio 2026** | Corrección de Contraste WCAG 2.1 AA en `Demos.tsx`, `Footer.tsx` y `Services.tsx`. | ✅ 10/10 rutas en 2.5s |
-| **Agosto 2026** | Despliegue en producción sobre **VPS propio** (nginx + `next start`) y desarrollo vía **git worktrees** (`/root/.openclaw/worktrees/agencialquimia-web`). | ✅ En producción |
-| **Agosto 2026** | Conexión en vivo con **Supabase Cloud** (`ybqzcxabblyzqhezanaf`): explorador de las **11 tablas** en el admin (`/admin` → pestaña Tablas Supabase) con API routes server-side y DataTable.tsx. Verificado: 11/11 tablas HTTP 200 + tsc/lint/test/build OK. | ✅ En producción |
-| **Agosto 2026** | **Seguridad del Panel Admin:** Implementación de Login (`/admin/login`) mediante JWT nativo (`crypto.subtle`), validado por Next.js Middleware y guardado en cookie segura `HttpOnly`. 0 dependencias externas. | ✅ En producción |
-| **Agosto 2026** | **Panel admin avanzado:** diagrama n8n drag & drop con Guardar funcional (PUT `{name,nodes,connections,settings}`), detalle de nodos, pipeline kanban de leads (columna `etapa`), chat con **Max** (webhook `max-whatsapp`, Gemini 2.5 Pro + memoria) e historial de ejecuciones. | ✅ tsc/build OK |
-| **Agosto 2026** | **Auditoría de seguridad + 4 arreglos:** ① rol Postgres de Max → rol limitado `n8n_max` (Supabase Cloud); ② PIN 2 pasos del número WhatsApp activado; ③ clave de cifrado de n8n rotada (15/15 credenciales re-cifradas + 5 API keys JWT re-firmadas + SSH key sourceControl); ④ token System User documentado con rotación manual. Detalle en `notes/permisos-whatsapp.md`. | ✅ API 200 + 7 workflows activos |
-| **Agosto 2026** | **Seguridad de APIs & Resiliencia:** Blindaje de todas las APIs admin (`/api/admin/*`) mediante JWT y cookie HttpOnly. Implementación de Rate Limiting por IP (15 req/min) en `/api/chat/route.ts` contra denegación de servicio. | ✅ Completado (0 lints/0 tsc/build OK) |
-| **Agosto 2026** | **Integración de Python (Fase 1):** Creación del plan completo de integración de Python (FastAPI sidecar) y estructuración de la Fase 1 (creación de directorios, `pyproject.toml`, `Dockerfile`, `main.py`, entorno virtual y dependencias). | ✅ Fase 1 Completada (Health check listo) |
-| **Agosto 2026** | **Integración de Python (Fase 2):** Módulo de seguridad inter-servicio: `dependencies/auth.py` con verificación HMAC SHA-256 en FastAPI + `lib/python-client.ts` cliente firmador en Next.js. Tests: health 200 OK, firma válida 200 OK, firma inválida 403 Forbidden. | ✅ Fase 2 Completada (Push OK python-core) |
-| **Agosto 2026** | **Integración de Python (Fase 3):** Migración del geocodificador prioritario de Galicia (`/hunter/geocode`) y del extractor de contactos web (`/hunter/extract`) al FastAPI sidecar. Refactorización del proxy Next.js con autenticación HMAC SHA-256. | ✅ Fase 3 Completada (Push OK python-core) |
-| **Agosto 2026** | **Integración de Python (Fase 4):** Generador de auditorías PDF con WeasyPrint y motor heurístico de Lead Scoring en FastAPI. Integración del botón de descarga directa en el Kanban de leads (`components/admin/LeadPipeline.tsx`). | ✅ Fase 4 Completada (Push OK python-core) |
-| **Agosto 2026** | **Integración de Python (Fase 5):** Suite de pruebas automatizadas con `pytest` (7/7 tests exitosos) para auth HMAC, scraper Hunter, Lead Scoring y WeasyPrint PDF. Integración en pipeline de CI/CD (`.github/workflows/ci.yml`). | ✅ Fase 5 Completada (Push OK python-core) |
+| Fecha | Hito / Cambio | Validación Técnica |
+| :--- | :--- | :--- |
+| **Agosto 2026** | **Despliegue inicial en VPS propio con Coolify:** Migración desde Vercel a infraestructura Docker + Traefik con Supabase local en el servidor `195.201.118.14`. | ✅ CI/CD y despliegues OK |
+| **Agosto 2026** | **Implementación del Sistema de Autenticación HMAC Red-Team en FastAPI:** Dependencia `verify_internal_signature` inyectable vía `fastapi.Depends()`, timestamps anti-replay y cliente `lib/python-client.ts`. | ✅ 9/9 pytest + 6/6 vitest + 0 lints |
+| **Agosto 2026** | **Rediseño UI/UX y Filtros del Radar Hunter:** Filtros por sector, carencias digitales y palabras clave de exclusión con diseño WCAG 2.1 AA. | ✅ 0 lints / 0 tsc / Vitest OK |
+| **30 Agosto 2026** | **Dinamización y Animaciones GPU del Hero Banner:** Orbes de luz flotantes multicapa (`@keyframes hero-float-1/2/3`), spotlight reactivo al cursor (`mousePos`), haz de escaneo continuo tipo radar y shimmer lumínico en "Solo.". | ✅ 13/13 vitest + 0 tsc / build OK |
+| **30 Agosto 2026** | **Depuración y Hotfix del Chatbot IA (n8n Webhook & Fallback):** Corrección del error silencioso de respuesta `...` provocado por rate limits en Google Gemini (HTTP 429). Eliminado el fallback `'...'` en el nodo web de n8n e inyectado fallback conversacional profesional. Z-Index del widget elevado a `z-[9999]`. | ✅ API Route 200 OK + Flujo reactivo |
+| **30 Agosto 2026** | **Reposicionamiento a Estudio de Arquitectura Web & Ecosistemas IA:** Actualización completa de Hero, Servicios (4 Pilares + Tabla Comparativa vs SaaS), Tarifas e Infraestructura Soberana. | ✅ 13/13 vitest + 0 lints / build OK |
+| **30 Agosto 2026** | **Integración de las 6 Demos en Producción (incluyendo KineKids):** Incorporadas las 6 aplicaciones interactivas en vivo por sector (*Mercado La Galiciana*, *Frutería Nexus*, *Centro Melros*, *Portal Inmobiliario*, *Campus LMS*, *KineKids*). | ✅ Grid 3 col WCAG 2.1 AA |
+| **30 Agosto 2026** | **Nuevo Favicon e Iconos Neón Vectoriales SVG:** Diseño de matraz/prisma alquímico con circuitos IA (`favicon.svg?v=2`, `app/icon.svg` y `favicon.ico`) con cache-busting. | ✅ HTTP 200 en navegadores |
+| **31 Agosto 2026** | **Arquitectura de Cookies Seguras & Sesiones (FastAPI + Next.js):** Aplicación de la Metodología MARCO y Code Refinement Suite Nivel 3. La Muralla Técnica `HttpOnly`, firma HMAC anti-tampering, Seguridad por Ambigüedad (401 unificado), ciclo defensivo de 3 estados en React y creación de `docs/Orchid.md`. | ✅ 14/14 pytest + 17/17 vitest |
+| **30 Agosto 2026** | **Resolución de Hidratación React y Servidor Dev (`next dev`):** Identificación y corrección de 404 en scripts de desarrollo (`main-app.js`, `polyfills.js`) por solapamiento de `next build`. Reinicio limpio y verificación de todas las rutas (`/`, `/admin`, `/api/chat`). | ✅ Todas las rutas 200 OK |
+
+---
+
+## 8. Reflexiones y Decisiones Clave Recientes (30 de Agosto de 2026) 📝
+
+### 8.1. Dinamización Estética del Banner Principal
+* **Problema:** El fondo del banner Hero presentaba un diseño estático que no transmitía el dinamismo y la vanguardia de una agencia de automatización con IA.
+* **Solución Técnica:** Se implementó una arquitectura visual por capas:
+  1. Fondo ambiental de puntos neón con haz de escaneo continuo (`animate-scan-line`).
+  2. Tres orbes de luz líquida orgánica (`blur-[130px]` a `blur-[160px]`) animados con CSS puro y aceleración por GPU.
+  3. Foco de luz interactivo (*Spotlight*) que calcula las coordenadas del cursor del usuario en tiempo real.
+  4. Efecto de brillo metálico animado (*Shimmer*) para acentuar el término comercial "Solo." y aro pulsante en el badge corporativo.
+* **Resultado:** Estética premium, fluida a 60fps sin sobrecargar la CPU ni aumentar el bundle de JavaScript.
+
+### 8.2. Diagnóstico de Rate Limits y Fallbacks en el Webhook de n8n
+* **Problema:** Los usuarios al interactuar con el chat recibían únicamente tres puntos `...` como respuesta.
+* **Causa Raíz:** 
+  1. La API Key de Google Gemini configurada en n8n (`lwiywrx976Ev9exU`) superó la cuota de peticiones gratuitas (`"The service is receiving too many requests from you"` - HTTP 429).
+  2. El nodo de código `📤 Formatear Respuesta Web` en n8n tenía programado: `const output = $input.first()?.json?.output || '...';`, enviando `'...'` como respuesta válida HTTP 200 al frontend Next.js.
+* **Solución Técnica:**
+  1. Se actualizó el workflow de n8n (`7nM4PGPa5AqQJWbH`) mediante la API oficial para modificar la lógica del nodo `📤 Formatear Respuesta Web`, garantizando que ante cualquier fallo de la IA se entregue un mensaje empático y comercial.
+  2. Se blindó el componente `ChatWidget.tsx` con capa `z-[9999]` y `pointer-events-auto` para evitar bloqueos táctiles o de clics.
+
+### 8.3. Gestión de Caché `.next` y Concurrencia en Entorno de Desarrollo
+* **Problema:** Pérdida momentánea de CSS (página en blanco) y enlaces inertes en el navegador (ni `/admin` ni el botón de chat abrían).
+* **Causa Raíz:** La ejecución de `next build` en segundo plano mientras `next dev` seguía activo sobreescribió la carpeta `.next/` con manifiestos de producción, haciendo que `next dev` respondiese con `404` en los chunks `main-app.js` y `app-pages-internals.js`. Sin estos scripts, React no lograba hidratar el DOM y ningún manejador `onClick` se enlazaba.
+* **Solución Técnica:**
+  1. Terminación del proceso huérfano en el puerto 3000 (`fuser -k 3000/tcp`).
+  2. Limpieza del directorio `.next/` y arranque limpio del servidor en modo daemon.
+  3. Comprobación exhaustiva de que todos los chunks devuelven `HTTP 200 OK` y el CSS de 112 KB se inyecta con éxito.
+
+
+### 8.4. Arquitectura de Cookies Seguras, Metodología MARCO y Sesiones en FastAPI
+* **Objetivo:** Establecer una gestión de identidad y sesiones impenetrable frente a vulnerabilidades XSS y ataques de fuerza bruta, garantizando la interoperabilidad fluida entre Next.js 15 y el microservicio FastAPI Core.
+* **Decisiones Arquitectónicas Adoptadas:**
+  1. **La Muralla Técnica (`HttpOnly` + `Secure` + `SameSite=Lax`):** Prohibición absoluta de almacenar tokens JWT o identificadores en `localStorage` (vulnerables a robo por XSS). Las cookies solo viajan en las cabeceras HTTP del protocolo.
+  2. **Firma Criptográfica Anti-Tampering (`lib/security_cookies.py`):** Las cookies de visitantes anónimos (`alquimia_visitor`) se emiten en formato `UUID.HMAC_SHA256`. Cualquier intento de manipulación en el cliente es detectado de inmediato, regenerando la sesión de forma limpia.
+  3. **Seguridad por Ambigüedad en Autenticación:** Respuestas HTTP 401 unificadas (`"Credenciales inválidas"`) en los endpoints de login (`/api/admin/login` y `/session/login`), imposibilitando la enumeración de usuarios en ataques de fuerza bruta.
+  4. **Patrón Reactivo de los 3 Estados (`data`, `error`, `isLoading`):** Encapsulación con `try / catch / finally` donde el bloque `finally` desactiva siempre los spinners de carga y se bloquean dobles envíos mediante `disabled={isLoading}`.
+  5. **Documentación de Aprendizaje (`docs/Orchid.md`):** Creación del documento de síntesis MARCO para contrastar la interpretación inicial del requerimiento con la solución técnica implementada.

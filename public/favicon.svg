@@ -1,9 +1,75 @@
-<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 128 128">
-    <path d="M50.4 78.5a75.1 75.1 0 0 0-28.5 6.9l24.2-65.7c.7-2 1.9-3.2 3.4-3.2h29c1.5 0 2.7 1.2 3.4 3.2l24.2 65.7s-11.6-7-28.5-7L67 45.5c-.4-1.7-1.6-2.8-2.9-2.8-1.3 0-2.5 1.1-2.9 2.7L50.4 78.5Zm-1.1 28.2Zm-4.2-20.2c-2 6.6-.6 15.8 4.2 20.2a17.5 17.5 0 0 1 .2-.7 5.5 5.5 0 0 1 5.7-4.5c2.8.1 4.3 1.5 4.7 4.7.2 1.1.2 2.3.2 3.5v.4c0 2.7.7 5.2 2.2 7.4a13 13 0 0 0 5.7 4.9v-.3l-.2-.3c-1.8-5.6-.5-9.5 4.4-12.8l1.5-1a73 73 0 0 0 3.2-2.2 16 16 0 0 0 6.8-11.4c.3-2 .1-4-.6-6l-.8.6-1.6 1a37 37 0 0 1-22.4 2.7c-5-.7-9.7-2-13.2-6.2Z" />
-    <style>
-        path { fill: #000; }
-        @media (prefers-color-scheme: dark) {
-            path { fill: #FFF; }
-        }
-    </style>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <!-- Gradiente de Fondo Dark Charcoal -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0d10" />
+      <stop offset="100%" stop-color="#04120e" />
+    </linearGradient>
+
+    <!-- Gradiente Neón Esmeralda a Menta -->
+    <linearGradient id="emeraldNeon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="50%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+
+    <!-- Gradiente de Resplandor Central -->
+    <radialGradient id="glowCore" cx="50%" cy="55%" r="45%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.6" />
+      <stop offset="60%" stop-color="#047857" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Filtro de Resplandor Neón -->
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Contenedor Cuadrado con Bordes Redondeados (App Icon / Favicon) -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" stroke="#10b981" stroke-width="8" stroke-opacity="0.3" />
+
+  <!-- Resplandor Ambiental Interior -->
+  <circle cx="256" cy="270" r="180" fill="url(#glowCore)" />
+
+  <!-- Grupo del Símbolo Alquímico & Red Neuronal IA -->
+  <g filter="url(#neonGlow)">
+    
+    <!-- 1. Cuello y Boca del Matraz Alquímico -->
+    <rect x="220" y="80" width="72" height="24" rx="12" fill="none" stroke="url(#emeraldNeon)" stroke-width="14" stroke-linecap="round" />
+    <path d="M236 104V190" stroke="url(#emeraldNeon)" stroke-width="14" stroke-linecap="round" />
+    <path d="M276 104V190" stroke="url(#emeraldNeon)" stroke-width="14" stroke-linecap="round" />
+
+    <!-- 2. Cuerpo Facetado / Cristal Alquímico -->
+    <path d="M236 190L130 350C116 372 132 400 158 400H354C380 400 396 372 382 350L276 190" 
+          fill="none" stroke="url(#emeraldNeon)" stroke-width="16" stroke-linejoin="round" stroke-linecap="round" />
+
+    <!-- 3. Facetas de Diamante / Prisma Inferior -->
+    <path d="M158 400L256 310L354 400" fill="none" stroke="url(#emeraldNeon)" stroke-width="12" stroke-linejoin="round" stroke-linecap="round" stroke-opacity="0.8" />
+    <path d="M130 350L256 310L382 350" fill="none" stroke="url(#emeraldNeon)" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" stroke-opacity="0.7" />
+    <path d="M256 190V310" fill="none" stroke="url(#emeraldNeon)" stroke-width="12" stroke-linecap="round" stroke-dasharray="4 12" />
+
+    <!-- 4. Nódulo Neuronal IA Central Flotante (Hexágono + Núcleo) -->
+    <polygon points="256,220 295,242 295,288 256,310 217,288 217,242" 
+             fill="#0b0d10" stroke="#34d399" stroke-width="10" stroke-linejoin="round" />
+    
+    <!-- Núcleo de Energía IA -->
+    <circle cx="256" cy="265" r="16" fill="#34d399" />
+    
+    <!-- Nodos Satélite Conectados -->
+    <circle cx="256" cy="220" r="7" fill="#6ee7b7" />
+    <circle cx="295" cy="242" r="7" fill="#6ee7b7" />
+    <circle cx="295" cy="288" r="7" fill="#6ee7b7" />
+    <circle cx="256" cy="310" r="7" fill="#6ee7b7" />
+    <circle cx="217" cy="288" r="7" fill="#6ee7b7" />
+    <circle cx="217" cy="242" r="7" fill="#6ee7b7" />
+
+    <!-- 5. Destellos de Alquimia / Chispas Superiores -->
+    <path d="M370 140L376 156L392 162L376 168L370 184L364 168L348 162L364 156Z" fill="#34d399" />
+    <path d="M130 180L134 192L146 196L134 200L130 212L126 200L114 196L126 192Z" fill="#34d399" />
+  </g>
 </svg>

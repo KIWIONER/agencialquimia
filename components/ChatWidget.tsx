@@ -13,12 +13,12 @@
  *     - Contenedor de historial configurado como región viva (`aria-live="polite"`).
  *     - Atajo de teclado `Escape` para cerrar la ventana modal.
  *     - Restauración de foco táctil/visual en el botón disparador tras el cierre.
- *  3. Efecto Máquina de Escribir (Typewriter): Revela las respuestas de la IA progresivamente.
+ *  3. Z-Index Máximo (z-[9999]): Garantiza que el widget y botón flotante sean siempre accesibles e interactuables.
  *  4. Resiliencia CRO & Fallbacks de Conversión: Muestra un botón directo a WhatsApp si la conexión neuronal falla.
  * ==============================================================================
  */
 
-import { useState, useEffect, useRef, FormEvent } from 'react';
+import React, { useState, useEffect, useRef, FormEvent } from 'react';
 import { Bot, X, Send, MessageCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import { ChatMessage, ChatResponseData } from '@/types/chat';
 
@@ -57,7 +57,11 @@ export default function ChatWidget() {
   useEffect(() => {
     if (isOpen) {
       scrollToBottom();
-      inputRef.current?.focus();
+      // Pequeño timeout para asegurar foco tras la animación
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
     }
   }, [messages, isOpen]);
 
@@ -153,13 +157,13 @@ export default function ChatWidget() {
 
   return (
     <>
-      {/* Botón Flotante Disparador del Chat (Bottom Right) */}
+      {/* Botón Flotante Disparador del Chat (Bottom Right con z-[9999]) */}
       {!isOpen && (
         <button
           ref={triggerBtnRef}
           type="button"
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 p-4 rounded-full bg-emerald-950 hover:bg-emerald-900 text-emerald-400 border-2 border-emerald-500 shadow-2xl transition-all duration-300 hover:scale-105 focus:outline-none flex items-center justify-center cursor-pointer"
+          className="fixed bottom-6 right-6 z-[9999] p-4 rounded-full bg-emerald-950 hover:bg-emerald-900 text-emerald-400 border-2 border-emerald-500 shadow-2xl transition-all duration-300 hover:scale-105 focus:outline-none flex items-center justify-center cursor-pointer pointer-events-auto"
           aria-label="Abrir chat de asistente IA 24/7"
         >
           <Bot className="w-6 h-6 animate-pulse" />
@@ -169,7 +173,7 @@ export default function ChatWidget() {
       {/* Ventana Modal del Chat Conversacional */}
       {isOpen && (
         <div
-          className="fixed inset-0 sm:inset-auto sm:bottom-24 sm:right-6 w-full sm:w-[400px] h-[100dvh] sm:h-[540px] sm:max-h-[80vh] z-50 bg-emerald-950 sm:border-2 border-emerald-500/30 sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in sm:zoom-in-95"
+          className="fixed inset-0 sm:inset-auto sm:bottom-24 sm:right-6 w-full sm:w-[400px] h-[100dvh] sm:h-[540px] sm:max-h-[80vh] z-[9999] bg-emerald-950 sm:border-2 border-emerald-500/30 sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in sm:zoom-in-95 pointer-events-auto"
           role="dialog"
           aria-label="Ventana de Chat de IA"
         >
@@ -190,7 +194,7 @@ export default function ChatWidget() {
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="p-1.5 rounded-lg text-emerald-300 hover:bg-emerald-800/50 transition-colors"
+              className="p-1.5 rounded-lg text-emerald-300 hover:bg-emerald-800/50 transition-colors cursor-pointer"
               aria-label="Cerrar ventana de chat"
             >
               <X className="w-5 h-5" />

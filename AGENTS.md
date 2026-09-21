@@ -18,6 +18,8 @@ Para contexto de negocio y arquitectura completo: leer **[CONTEXT.md](CONTEXT.md
 
 ## 3. Reglas no negociables (detalle en ai-rules.md)
 
+0. **REGLA ABSOLUTA DE GIT:** NUNCA realizar `git push` sin el consentimiento explícito y previo del usuario. Preguntar siempre antes de enviar cambios al remoto.
+
 1. **TypeScript estricto** — prohibido `any` sin tipar; contratos en `types/`.
 2. **Documentación exhaustiva en código** — bloque JSDoc superior en español + comentarios explicativos en cada función y sección JSX.
 3. **Copy de negocio en español de España** — conservar tono comercial, directo y orientado a conversión para pymes; nunca sustituir por copy genérico.
