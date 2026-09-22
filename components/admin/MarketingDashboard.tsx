@@ -67,7 +67,7 @@ export default function MarketingDashboard() {
       } else {
         alert('Error al aprobar el borrador.');
       }
-    } catch (e) {
+    } catch {
       alert('Error de red al aprobar.');
     } finally {
       setIsApproving(false);
@@ -91,7 +91,7 @@ export default function MarketingDashboard() {
       } else {
         alert('Error al guardar los cambios.');
       }
-    } catch (error) {
+    } catch {
       alert('Error de red al intentar guardar.');
     } finally {
       setIsSaving(false);
@@ -166,7 +166,7 @@ export default function MarketingDashboard() {
       } else {
         alert('Error al generar la imagen: ' + (data.error || 'Desconocido'));
       }
-    } catch (error) {
+    } catch {
       alert('Error de red al intentar generar la imagen.');
     } finally {
       setIsGeneratingImage(false);
@@ -224,7 +224,7 @@ export default function MarketingDashboard() {
       } else {
         alert('Hubo un error al contactar al webhook.');
       }
-    } catch (error) {
+    } catch {
       alert('Error de red. Asegúrate de que el workflow en n8n esté activo.');
     } finally {
       setIsGenerating(false);
@@ -672,6 +672,7 @@ export default function MarketingDashboard() {
                 <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center min-h-[400px]">
                   {selectedDraft.image_url ? (
                     <div className="flex flex-col items-center w-full">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={selectedDraft.image_url} alt="Portada generada" className="w-full max-w-lg rounded-xl shadow-md mb-6 object-cover aspect-video" />
                       <button 
                         onClick={handleGenerateImage}

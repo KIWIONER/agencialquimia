@@ -48,8 +48,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, image_url });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error en generate-image API:', error);
-    return NextResponse.json({ error: error.message || 'Error interno' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Error interno';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
